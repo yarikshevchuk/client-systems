@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, fmt, getToken } from '../api.js'
+import { Avatar, Empty, Icon, Toggle } from './ui.jsx'
 
 export default function Chat({ courseId }) {
   const [messages, setMessages] = useState([])
@@ -46,29 +47,37 @@ export default function Chat({ courseId }) {
 
   return (
     <div className="card">
-      <h2>Course Q&amp;A</h2>
+      <div className="card-title">
+        <span className="icon-wrap"><Icon name="chat" size={16} /></span>
+        <h2>Course Q&amp;A</h2>
+      </div>
       <div className="chat">
+        {messages.length === 0 && <Empty icon="chat">No messages yet. Ask the first question.</Empty>}
         {messages.map((message) => (
-          <div key={message.id} className={message.is_question ? 'message question' : 'message'}>
-            <div className="muted">
-              {message.author}
-              {message.role === 'teacher' ? ' (lecturer)' : ''} · {fmt(message.created_at)}
-              {message.is_question ? ' · question' : ''}
+          <div key={message.id} className={message.is_question ? 'msg question' : 'msg'}>
+            <Avatar name={message.author} />
+            <div className="bubble">
+              <div className="head">
+                <strong>{message.author}</strong>
+                {message.role === 'teacher' && <span className="badge accent">Lecturer</span>}
+                {message.is_question ? <span className="badge">Question</span> : null}
+                <span>{fmt(message.created_at)}</span>
+              </div>
+              <div className="body">{message.text}</div>
             </div>
-            <div>{message.text}</div>
           </div>
         ))}
         <div ref={bottom} />
       </div>
-      <form onSubmit={send}>
-        <input placeholder="Write a message…" value={text} onChange={(e) => setText(e.target.value)} />
-        <label className="check">
-          <input type="checkbox" checked={isQuestion} onChange={(e) => setIsQuestion(e.target.checked)} />
-          This is a question
-        </label>
-        {error && <p className="error">{error}</p>}
-        <button type="submit">Send</button>
+      <form className="composer" onSubmit={send}>
+        <input className="input" placeholder="Write a message…" value={text} onChange={(e) => setText(e.target.value)} />
+        <span className="chip">
+          <Toggle checked={isQuestion} onChange={setIsQuestion} label="Mark as a question" />
+          Question
+        </span>
+        <button type="submit" className="btn" disabled={!text.trim()}><Icon name="send" size={16} />Send</button>
       </form>
+      {error && <p className="error">{error}</p>}
     </div>
   )
 }
