@@ -20,6 +20,11 @@ async def lifespan(app):
 
 app = FastAPI(title="VNS", lifespan=lifespan)
 
+@app.get("/")
+def root():
+    return {"message": "This is the VNS API. The site is at http://localhost:5173, API docs at /docs"}
+
+
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(chat.router)
