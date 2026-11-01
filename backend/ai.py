@@ -2,21 +2,23 @@ import json
 import os
 import re
 import urllib.request
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-import courses
 import db
-from auth import current_user, teacher_only
+from access import get_course, get_material, manage_course
+from auth import current_user
 
 router = APIRouter(prefix="/api")
 
 NOT_FOUND = "Not found in the course materials"
+DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "30"))
 
 STOP_WORDS = {
     "the", "and", "for", "what", "how", "why", "when", "does", "this", "that", "with", "from", "are", "was",
-    "about", "can", "you", "explain", "tell", "give", "show", "mean", "means",
+    "about", "can", "you", "explain", "tell", "give", "show", "mean", "means", "which", "where", "who",
     "що", "таке", "як", "чому", "коли", "це", "для", "про", "або", "чи", "які", "який", "яка", "мені",
 }
 
@@ -24,6 +26,7 @@ STOP_WORDS = {
 class SettingsIn(BaseModel):
     summaries_on: bool
     ask_on: bool
+    flashcards_on: bool
 
 
 class QuestionIn(BaseModel):
@@ -36,7 +39,7 @@ def call_llm(system, user):
         return None
     body = json.dumps({
         "model": os.environ.get("AI_MODEL", "claude-sonnet-5-5"),
-        "max_tokens": 600,
+        "max_tokens": 900,
         "system": system,
         "messages": [{"role": "user", "content": user}],
     }).encode()
@@ -44,7 +47,7 @@ def call_llm(system, user):
         "https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=40) as response:
             return json.load(response)["content"][0]["text"].strip()
     except Exception:
         return None
@@ -59,12 +62,25 @@ def words(text):
     return {word for word in re.findall(r"\w+", text.lower()) if len(word) > 2 and word not in STOP_WORDS}
 
 
+def usage_today(user_id):
+    row = db.one("select count from ai_usage where user_id = %s and day = %s", (user_id, date.today()))
+    return row["count"] if row else 0
+
+
+def spend(user):
+    if usage_today(user["id"]) >= DAILY_LIMIT:
+        raise HTTPException(429, f"Daily AI limit of {DAILY_LIMIT} requests is reached. Try again tomorrow")
+    db.execute(
+        "insert into ai_usage (user_id, day, count) values (%s, %s, 1) "
+        "on conflict (user_id, day) do update set count = ai_usage.count + 1", (user["id"], date.today()))
+
+
 def find_sources(course_id, question):
     asked = words(question)
     scored = []
     materials = db.select(
         "select m.id, m.title, m.kind, m.content from materials m join topics t on t.id = m.topic_id "
-        "where t.course_id = ?", (course_id,))
+        "where t.course_id = %s", (course_id,))
     for material in materials:
         score = len(asked & words(material["title"] + " " + material["content"]))
         if score:
@@ -80,34 +96,51 @@ def best_sentences(text, question, count):
 
 
 def get_settings(course_id):
-    row = db.one("select * from ai_settings where course_id = ?", (course_id,))
-    return {"summaries_on": bool(row["summaries_on"]), "ask_on": bool(row["ask_on"])}
+    row = db.one("select * from ai_settings where course_id = %s", (course_id,))
+    return {key: bool(row[key]) for key in ("summaries_on", "ask_on", "flashcards_on")}
+
+
+def cloze_cards(content):
+    cards = []
+    for sentence in sentences(content):
+        candidates = [w for w in re.findall(r"[A-Za-z]{6,}", sentence) if w.lower() not in STOP_WORDS]
+        if not candidates:
+            continue
+        target = max(candidates, key=len)
+        cards.append({"front": sentence.replace(target, "_____", 1), "back": target})
+    return cards[:6]
+
+
+@router.get("/ai/usage")
+def usage(user=Depends(current_user)):
+    return {"used": usage_today(user["id"]), "limit": DAILY_LIMIT}
 
 
 @router.get("/courses/{course_id}/ai-settings")
 def read_settings(course_id: int, user=Depends(current_user)):
-    courses.get_course(course_id, user)
+    get_course(course_id, user)
     return get_settings(course_id)
 
 
 @router.put("/courses/{course_id}/ai-settings")
-def write_settings(course_id: int, body: SettingsIn, user=Depends(teacher_only)):
-    courses.get_course(course_id, user)
-    db.execute("update ai_settings set summaries_on = ?, ask_on = ? where course_id = ?",
-               (int(body.summaries_on), int(body.ask_on), course_id))
+def write_settings(course_id: int, body: SettingsIn, user=Depends(current_user)):
+    manage_course(course_id, user)
+    db.execute("update ai_settings set summaries_on = %s, ask_on = %s, flashcards_on = %s where course_id = %s",
+               (body.summaries_on, body.ask_on, body.flashcards_on, course_id))
     return get_settings(course_id)
 
 
 @router.post("/materials/{material_id}/summary")
 def summary(material_id: int, user=Depends(current_user)):
-    material = courses.get_material(material_id, user)
+    material, course = get_material(material_id, user)
     if material["kind"] != "lecture":
         raise HTTPException(400, "Summaries are available for lectures only")
-    if not get_settings(material["course_id"])["summaries_on"]:
+    if not get_settings(course["id"])["summaries_on"]:
         raise HTTPException(403, "AI summaries are turned off for this course by the lecturer")
-    cached = db.one("select text from ai_summaries where material_id = ?", (material_id,))
+    cached = db.one("select text from ai_summaries where material_id = %s", (material_id,))
     if cached:
         return {"summary": cached["text"], "cached": True}
+    spend(user)
     text = call_llm(
         "You summarize university lectures. Reply with 4 to 6 short bullet key points, one per line, "
         "each starting with '- '. Use only the given lecture text.",
@@ -115,18 +148,19 @@ def summary(material_id: int, user=Depends(current_user)):
     demo = text is None
     if demo:
         text = "\n".join("- " + s for s in sentences(material["content"])[:5]) or "- The lecture text is empty."
-    db.execute("insert into ai_summaries (material_id, text) values (?, ?)", (material_id, text))
+    db.execute("insert into ai_summaries (material_id, text) values (%s, %s) on conflict do nothing", (material_id, text))
     return {"summary": text, "cached": False, "demo": demo}
 
 
 @router.post("/courses/{course_id}/ask")
 def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
-    courses.get_course(course_id, user)
+    get_course(course_id, user)
     if not get_settings(course_id)["ask_on"]:
         raise HTTPException(403, "The AI assistant is turned off for this course by the lecturer")
     sources = find_sources(course_id, body.question)
     if not sources:
         return {"found": False, "answer": NOT_FOUND, "sources": []}
+    spend(user)
     graded = any(source["kind"] == "lab" for source in sources)
     context = "\n\n".join(f"[{s['title']}]\n{s['content']}" for s in sources)
     system = ("You are a course assistant. Answer only from the given course materials. If the answer is not "
@@ -135,11 +169,8 @@ def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
     text = call_llm(system, f"Materials:\n{context}\n\nQuestion: {body.question}")
     demo = text is None
     if demo:
-        if graded:
-            hints = " ".join(best_sentences(sources[0]["content"], body.question, 2))
-            text = ("This task is graded, so I will not give a ready solution. Hints: " + hints)
-        else:
-            text = " ".join(best_sentences(sources[0]["content"], body.question, 2))
+        picked = " ".join(best_sentences(sources[0]["content"], body.question, 2))
+        text = ("This task is graded, so I will not give a ready solution. Hints: " + picked) if graded else picked
     if not text.strip():
         text = NOT_FOUND
     found = NOT_FOUND not in text
@@ -150,3 +181,33 @@ def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
         "graded": graded,
         "sources": [{"id": s["id"], "title": s["title"]} for s in sources] if found else [],
     }
+
+
+@router.post("/materials/{material_id}/flashcards/generate")
+def generate_cards(material_id: int, user=Depends(current_user)):
+    material, course = get_material(material_id, user)
+    if material["kind"] != "lecture":
+        raise HTTPException(400, "Flashcards are made from lectures")
+    if not get_settings(course["id"])["flashcards_on"]:
+        raise HTTPException(403, "AI flashcards are turned off for this course by the lecturer")
+    spend(user)
+    cards = None
+    text = call_llm(
+        "Make 4 to 6 study flashcards from the lecture. Reply with JSON only: a list of objects with keys "
+        "front and back. Use only the given lecture text.", material["title"] + "\n\n" + material["content"])
+    if text:
+        try:
+            cards = [{"front": str(c["front"]), "back": str(c["back"])} for c in json.loads(text[text.index("["):text.rindex("]") + 1])]
+        except (ValueError, KeyError, TypeError):
+            cards = None
+    demo = cards is None
+    if demo:
+        cards = cloze_cards(material["content"])
+    now = datetime.now()
+    created = []
+    for card in cards:
+        card_id = db.insert(
+            "insert into flashcards (user_id, material_id, front, back, due, created_at) values (%s, %s, %s, %s, %s, %s)",
+            (user["id"], material_id, card["front"], card["back"], now, now))
+        created.append(db.one("select * from flashcards where id = %s", (card_id,)))
+    return {"cards": created, "demo": demo}

@@ -2,12 +2,22 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+import admin
 import ai
+import announcements
 import auth
-import chat
 import courses
 import db
+import discussion
+import dm
+import live
+import notifications
+import schedule
+import search
 import seed
+import spaces
+import study
+import submissions
 
 
 @asynccontextmanager
@@ -20,12 +30,12 @@ async def lifespan(app):
 
 app = FastAPI(title="VNS", lifespan=lifespan)
 
+
 @app.get("/")
 def root():
     return {"message": "This is the VNS API. The site is at http://localhost:5173, API docs at /docs"}
 
 
-app.include_router(auth.router)
-app.include_router(courses.router)
-app.include_router(chat.router)
-app.include_router(ai.router)
+for module in (auth, courses, submissions, announcements, discussion, dm, spaces, study, ai,
+               notifications, schedule, search, admin, live):
+    app.include_router(module.router)

@@ -2,5 +2,6 @@ fastapi
 uvicorn[standard]
 pyjwt
 python-multipart
+psycopg[binary]
 httpx
 pytest
