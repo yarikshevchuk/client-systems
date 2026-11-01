@@ -1,13 +1,23 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { api, getToken, setToken } from './api.js'
-import { Avatar, colorFor, Icon } from './components/ui.jsx'
+import { Avatar, colorFor, Icon, Loading } from './components/ui.jsx'
+import Notifications from './components/Notifications.jsx'
+import { LiveProvider, useLive } from './live.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Course from './pages/Course.jsx'
 import Material from './pages/Material.jsx'
+import Messages from './pages/Messages.jsx'
+import Spaces from './pages/Spaces.jsx'
+import Space from './pages/Space.jsx'
+import Calendar from './pages/Calendar.jsx'
+import Flashcards from './pages/Flashcards.jsx'
+import Search from './pages/Search.jsx'
+import Profile from './pages/Profile.jsx'
 
 const Settings = lazy(() => import('./pages/Settings.jsx'))
+const Admin = lazy(() => import('./pages/Admin.jsx'))
 
 function Brand() {
   return (
@@ -18,15 +28,120 @@ function Brand() {
   )
 }
 
+function SearchBox() {
+  const navigate = useNavigate()
+  const [text, setText] = useState('')
+
+  return (
+    <form
+      className="searchbox"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (text.trim()) navigate(`/search?q=${encodeURIComponent(text.trim())}`)
+      }}
+    >
+      <Icon name="search" size={16} />
+      <input placeholder="Search courses, materials, messages…" value={text} onChange={(e) => setText(e.target.value)} />
+    </form>
+  )
+}
+
+function Shell({ user, setUser, logout }) {
+  const [courses, setCourses] = useState([])
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [dueCards, setDueCards] = useState(0)
+  const location = useLocation()
+  const { counters } = useLive()
+
+  const loadCourses = useCallback(() => api('/courses').then(setCourses), [])
+
+  useEffect(() => {
+    loadCourses()
+  }, [loadCourses])
+
+  useEffect(() => setMenuOpen(false), [location.pathname])
+
+  useEffect(() => {
+    if (user.role === 'student') api('/flashcards').then((data) => setDueCards(data.due))
+  }, [location.pathname, user.role])
+
+  const link = ({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')
+
+  return (
+    <div className="shell">
+      <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
+        <Brand />
+        <nav className="nav">
+          <NavLink to="/" end className={link}><Icon name="home" /><span className="text">Dashboard</span></NavLink>
+          <NavLink to="/calendar" className={link}><Icon name="calendar" /><span className="text">Calendar</span></NavLink>
+          <NavLink to="/messages" className={link}>
+            <Icon name="chat" /><span className="text">Messages</span>
+            {counters.messages > 0 && <span className="count">{counters.messages}</span>}
+          </NavLink>
+          <NavLink to="/spaces" className={link}><Icon name="users" /><span className="text">Study spaces</span></NavLink>
+          {user.role === 'student' && (
+            <NavLink to="/flashcards" className={link}>
+              <Icon name="cards" /><span className="text">Flashcards</span>
+              {dueCards > 0 && <span className="count">{dueCards}</span>}
+            </NavLink>
+          )}
+          {user.role === 'admin' && <NavLink to="/admin" className={link}><Icon name="shield" /><span className="text">Admin</span></NavLink>}
+          <div className="nav-label">Courses</div>
+          {courses.map((course) => (
+            <NavLink key={course.id} to={`/courses/${course.id}`} className={link}>
+              <span className="dot" style={{ background: colorFor(course.id) }} />
+              <span className="text">{course.title}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <div className="sidebar-foot">
+          <Link to="/profile" className="me">
+            <Avatar name={user.name} />
+            <span className="who">
+              <strong>{user.name}</strong>
+              <span>{user.role}</span>
+            </span>
+          </Link>
+          <button className="icon-btn" onClick={logout} aria-label="Log out" title="Log out"><Icon name="logout" /></button>
+        </div>
+      </aside>
+      {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
+      <div className="content">
+        <header className="topbar">
+          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Icon name="menu" /></button>
+          <div className="mobile-brand"><Brand /></div>
+          <SearchBox />
+          <Notifications />
+        </header>
+        <main>
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              <Route path="/" element={<Dashboard user={user} onCoursesChanged={loadCourses} />} />
+              <Route path="/courses/:id" element={<Course user={user} />} />
+              <Route path="/courses/:id/settings" element={<Settings user={user} onCoursesChanged={loadCourses} />} />
+              <Route path="/materials/:id" element={<Material user={user} />} />
+              <Route path="/messages" element={<Messages user={user} />} />
+              <Route path="/messages/:otherId" element={<Messages user={user} />} />
+              <Route path="/spaces" element={<Spaces user={user} />} />
+              <Route path="/spaces/:id" element={<Space user={user} />} />
+              <Route path="/calendar" element={<Calendar user={user} />} />
+              <Route path="/flashcards" element={<Flashcards />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/profile" element={<Profile user={user} onChanged={setUser} />} />
+              <Route path="/admin" element={<Admin user={user} />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Suspense>
+        </main>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState(null)
   const [ready, setReady] = useState(false)
-  const [courses, setCourses] = useState([])
-  const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
-  const location = useLocation()
-
-  const loadCourses = useCallback(() => api('/courses').then(setCourses), [])
 
   useEffect(() => {
     if (!getToken()) {
@@ -39,16 +154,9 @@ export default function App() {
       .finally(() => setReady(true))
   }, [])
 
-  useEffect(() => {
-    if (user) loadCourses()
-  }, [user, loadCourses])
-
-  useEffect(() => setMenuOpen(false), [location.pathname])
-
   function logout() {
     setToken(null)
     setUser(null)
-    setCourses([])
     navigate('/')
   }
 
@@ -56,58 +164,8 @@ export default function App() {
   if (!user) return <Login onLogin={setUser} />
 
   return (
-    <div className="shell">
-      <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
-        <Brand />
-        <nav className="nav">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}>
-            <Icon name="home" />
-            <span className="text">Dashboard</span>
-          </NavLink>
-          <div className="nav-label">Courses</div>
-          {courses.map((course) => (
-            <NavLink key={course.id} to={`/courses/${course.id}`} className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}>
-              <span className="dot" style={{ background: colorFor(course.id) }} />
-              <span className="text">{course.title}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-foot">
-          <Avatar name={user.name} />
-          <div className="who">
-            <strong>{user.name}</strong>
-            <span>{user.role}</span>
-          </div>
-          <button className="icon-btn" onClick={logout} aria-label="Log out" title="Log out">
-            <Icon name="logout" />
-          </button>
-        </div>
-      </aside>
-      {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
-      <div className="content">
-        <header className="topbar">
-          <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu">
-            <Icon name="menu" />
-          </button>
-          <Brand />
-        </header>
-        <main>
-          <Routes>
-            <Route path="/" element={<Dashboard user={user} onCoursesChanged={loadCourses} />} />
-            <Route path="/courses/:id" element={<Course user={user} />} />
-            <Route
-              path="/courses/:id/settings"
-              element={
-                <Suspense fallback={<p className="muted">Loading…</p>}>
-                  <Settings user={user} />
-                </Suspense>
-              }
-            />
-            <Route path="/materials/:id" element={<Material user={user} />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
-      </div>
-    </div>
+    <LiveProvider user={user}>
+      <Shell user={user} setUser={setUser} logout={logout} />
+    </LiveProvider>
   )
 }

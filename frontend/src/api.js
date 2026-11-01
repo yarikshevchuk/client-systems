@@ -21,6 +21,35 @@ export function relative(date) {
   return { text: `In ${days} days`, tone: days <= 3 ? 'warn' : 'ok' }
 }
 
+export function timeAgo(date) {
+  const seconds = Math.round((Date.now() - new Date(date)) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} h ago`
+  const days = Math.round(hours / 24)
+  if (days < 7) return `${days} d ago`
+  return new Date(date).toLocaleDateString([], { dateStyle: 'medium' })
+}
+
+export function timeUntil(date) {
+  const minutes = Math.max(1, Math.round((new Date(date) - Date.now()) / 60000))
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} h`
+  return `${Math.round(hours / 24)} d`
+}
+
+export async function download(path, filename) {
+  const response = await fetch('/api' + path, { headers: { Authorization: `Bearer ${getToken()}` } })
+  if (!response.ok) throw new Error('Download failed')
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(await response.blob())
+  link.download = filename
+  link.click()
+}
+
 export async function api(path, options = {}) {
   const headers = { ...(options.headers || {}) }
   const token = getToken()

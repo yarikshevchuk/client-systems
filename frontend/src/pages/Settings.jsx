@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api.js'
-import { DateTimeField, Icon, Modal, Segmented, Select, Stepper, Toggle, useToast } from '../components/ui.jsx'
+import { Confirm, Icon, Loading, Toggle, useToast } from '../components/ui.jsx'
 
 function AiSettings({ courseId }) {
   const [settings, setSettings] = useState(null)
@@ -20,7 +20,13 @@ function AiSettings({ courseId }) {
     }
   }
 
-  if (!settings) return <p className="muted">Loading…</p>
+  if (!settings) return <Loading />
+  const rows = [
+    ['summaries_on', 'Summaries of lectures', 'Students can get the key points of a lecture.'],
+    ['flashcards_on', 'Flashcards from lectures', 'Students can generate study cards from a lecture.'],
+    ['ask_on', 'Questions about course materials', 'Answers only from the course materials. For graded labs the assistant gives hints, not solutions.'],
+  ]
+
   return (
     <div className="card">
       <div className="card-title">
@@ -28,145 +34,57 @@ function AiSettings({ courseId }) {
         <h2>AI assistant</h2>
       </div>
       <p className="muted small">All AI features are off until you turn them on.</p>
-      <div className="toggle-row">
-        <div>
-          <strong>Summaries of lectures</strong>
-          <div className="desc">Students can get key points of a lecture.</div>
+      {rows.map(([key, title, text]) => (
+        <div className="toggle-row" key={key}>
+          <div>
+            <strong>{title}</strong>
+            <div className="desc">{text}</div>
+          </div>
+          <Toggle label={title} checked={settings[key]} onChange={(value) => change(key, value)} />
         </div>
-        <Toggle label="Summaries of lectures" checked={settings.summaries_on} onChange={(value) => change('summaries_on', value)} />
-      </div>
-      <div className="toggle-row">
-        <div>
-          <strong>Questions about course materials</strong>
-          <div className="desc">Answers only from the course materials. For graded labs the assistant gives hints, not solutions.</div>
-        </div>
-        <Toggle label="Questions about course materials" checked={settings.ask_on} onChange={(value) => change('ask_on', value)} />
-      </div>
+      ))}
     </div>
   )
 }
 
-function AddTopic({ courseId, onClose, onAdded }) {
-  const [title, setTitle] = useState('')
-  const [error, setError] = useState('')
-  const toast = useToast()
-
-  async function add(event) {
-    event.preventDefault()
-    setError('')
-    try {
-      await api(`/courses/${courseId}/topics`, { method: 'POST', body: { title } })
-      toast('Topic added')
-      onAdded()
-      onClose()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  return (
-    <Modal title="Add a topic" onClose={onClose}>
-      <form onSubmit={add} className="stack">
-        <label className="field">
-          <span className="label">Title</span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Topic 4. Trees" autoFocus required />
-        </label>
-        {error && <p className="error">{error}</p>}
-        <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn">Add topic</button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
-function AddMaterial({ topics, onClose, onAdded }) {
-  const [topicId, setTopicId] = useState(topics[0].id)
-  const [kind, setKind] = useState('lecture')
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [deadline, setDeadline] = useState('')
-  const [maxPoints, setMaxPoints] = useState(10)
-  const [error, setError] = useState('')
-  const toast = useToast()
-
-  async function add(event) {
-    event.preventDefault()
-    setError('')
-    if (kind === 'lab' && !deadline) {
-      setError('Pick a deadline for the lab')
-      return
-    }
-    try {
-      await api(`/topics/${topicId}/materials`, {
-        method: 'POST',
-        body: { title, kind, content, deadline: deadline || null, max_points: maxPoints },
-      })
-      toast('Material added')
-      onAdded()
-      onClose()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  return (
-    <Modal title="Add a material" onClose={onClose}>
-      <form onSubmit={add} className="stack">
-        <div className="field">
-          <span className="label">Topic</span>
-          <Select value={topicId} onChange={setTopicId} options={topics.map((topic) => ({ value: topic.id, label: topic.title }))} />
-        </div>
-        <div className="field">
-          <span className="label">Type</span>
-          <Segmented value={kind} onChange={setKind} options={[{ value: 'lecture', label: 'Lecture' }, { value: 'lab', label: 'Lab (graded)' }]} />
-        </div>
-        <label className="field">
-          <span className="label">Title</span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Lecture 4. Binary trees" required />
-        </label>
-        <label className="field">
-          <span className="label">Text</span>
-          <textarea className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Lecture text or lab task" />
-        </label>
-        {kind === 'lab' && (
-          <>
-            <div className="field">
-              <span className="label">Deadline</span>
-              <DateTimeField value={deadline} onChange={setDeadline} />
-            </div>
-            <div className="field">
-              <span className="label">Max points</span>
-              <Stepper value={maxPoints} onChange={(value) => setMaxPoints(value === '' ? 1 : value)} min={1} max={100} />
-            </div>
-          </>
-        )}
-        {error && <p className="error">{error}</p>}
-        <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn">Add material</button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
-export default function Settings({ user }) {
+export default function Settings({ user, onCoursesChanged }) {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [data, setData] = useState(null)
-  const [dialog, setDialog] = useState(null)
-
-  function load() {
-    api(`/courses/${id}`).then(setData)
-  }
+  const [form, setForm] = useState(null)
+  const [confirm, setConfirm] = useState(false)
+  const [error, setError] = useState('')
+  const toast = useToast()
 
   useEffect(() => {
-    if (user.role === 'teacher') load()
+    if (user.role === 'student') return
+    api(`/courses/${id}`).then((result) => {
+      setData(result)
+      setForm({ title: result.course.title, description: result.course.description, grp: result.course.grp })
+    })
   }, [id, user.role])
 
-  if (user.role !== 'teacher') return <p className="error">You do not have access to this page.</p>
-  if (!data) return <p className="muted">Loading…</p>
+  async function save(event) {
+    event.preventDefault()
+    setError('')
+    try {
+      await api(`/courses/${id}`, { method: 'PUT', body: form })
+      toast('Course saved')
+      onCoursesChanged()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function remove() {
+    await api(`/courses/${id}`, { method: 'DELETE' })
+    toast('Course deleted')
+    onCoursesChanged()
+    navigate('/')
+  }
+
+  if (user.role === 'student') return <p className="error">You do not have access to this page.</p>
+  if (!data || !form) return <Loading />
 
   return (
     <>
@@ -174,24 +92,33 @@ export default function Settings({ user }) {
       <div className="page-head">
         <div>
           <h1>Course settings</h1>
-          <p>Content and AI rules for this course.</p>
+          <p>Course information and AI rules.</p>
         </div>
       </div>
+      <form className="card stack" onSubmit={save}>
+        <h2>Course</h2>
+        <label className="field">
+          <span className="label">Title</span>
+          <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        </label>
+        <label className="field">
+          <span className="label">Description</span>
+          <textarea className="textarea" style={{ minHeight: 80 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        </label>
+        <label className="field">
+          <span className="label">Student group</span>
+          <input className="input" value={form.grp} onChange={(e) => setForm({ ...form, grp: e.target.value })} required />
+        </label>
+        {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
+        <div><button type="submit" className="btn">Save course</button></div>
+      </form>
       <AiSettings courseId={id} />
-      <div className="card">
-        <div className="card-title">
-          <span className="icon-wrap"><Icon name="layers" size={16} /></span>
-          <h2>Content</h2>
-        </div>
-        <p className="muted small" style={{ marginBottom: 14 }}>{data.topics.length} topics · {data.topics.reduce((sum, topic) => sum + topic.materials.length, 0)} materials</p>
-        <div className="row wrap">
-          <button className="btn secondary" onClick={() => setDialog('topic')}><Icon name="plus" size={16} />Add topic</button>
-          <button className="btn" onClick={() => setDialog('material')} disabled={data.topics.length === 0}><Icon name="plus" size={16} />Add material</button>
-        </div>
-        {data.topics.length === 0 && <p className="muted small" style={{ marginTop: 12 }}>Add a topic first, then you can add materials.</p>}
+      <div className="card danger-zone">
+        <h2>Delete course</h2>
+        <p className="muted small" style={{ margin: '4px 0 14px' }}>Removes the course with all topics, materials, submissions, grades and discussions.</p>
+        <button className="btn danger" onClick={() => setConfirm(true)}><Icon name="trash" size={16} />Delete this course</button>
       </div>
-      {dialog === 'topic' && <AddTopic courseId={id} onClose={() => setDialog(null)} onAdded={load} />}
-      {dialog === 'material' && <AddMaterial topics={data.topics} onClose={() => setDialog(null)} onAdded={load} />}
+      {confirm && <Confirm title="Delete course" text={`Delete “${data.course.title}” and everything inside it? This cannot be undone.`} onConfirm={remove} onClose={() => setConfirm(false)} />}
     </>
   )
 }

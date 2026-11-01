@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmt, relative } from '../api.js'
-import { Avatar, colorFor, Empty, Icon, Modal, ProgressBar, useToast } from '../components/ui.jsx'
+import { api, fmt, relative, timeAgo } from '../api.js'
+import { Avatar, colorFor, Empty, Icon, Loading, Modal, ProgressBar, useToast } from '../components/ui.jsx'
 
 function NewCourse({ onClose, onCreated }) {
-  const [title, setTitle] = useState('')
-  const [grp, setGrp] = useState('CS-21')
+  const [form, setForm] = useState({ title: '', description: '', grp: 'CS-21' })
   const [error, setError] = useState('')
   const toast = useToast()
+  const set = (key) => (event) => setForm({ ...form, [key]: event.target.value })
 
   async function create(event) {
     event.preventDefault()
     setError('')
     try {
-      await api('/courses', { method: 'POST', body: { title, grp } })
+      await api('/courses', { method: 'POST', body: form })
       toast('Course created')
       onCreated()
       onClose()
@@ -27,11 +27,15 @@ function NewCourse({ onClose, onCreated }) {
       <form onSubmit={create} className="stack">
         <label className="field">
           <span className="label">Title</span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Computer Networks" autoFocus required />
+          <input className="input" value={form.title} onChange={set('title')} placeholder="e.g. Computer Networks" autoFocus required />
+        </label>
+        <label className="field">
+          <span className="label">Description</span>
+          <textarea className="textarea" style={{ minHeight: 80 }} value={form.description} onChange={set('description')} placeholder="What is this course about?" />
         </label>
         <label className="field">
           <span className="label">Student group</span>
-          <input className="input" value={grp} onChange={(e) => setGrp(e.target.value)} required />
+          <input className="input" value={form.grp} onChange={set('grp')} required />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
@@ -66,6 +70,24 @@ function TeacherDashboard({ data, user, onChanged }) {
         <div className="card tile"><span className="icon-wrap"><Icon name="users" /></span><div><strong>{students}</strong><span className="muted small">Students</span></div></div>
         <div className="card tile"><span className="icon-wrap"><Icon name="file" /></span><div><strong>{ungraded}</strong><span className="muted small">Waiting for a grade</span></div></div>
       </div>
+      {data.recent.length > 0 && (
+        <div className="section">
+          <div className="section-head"><h2>To grade</h2></div>
+          {data.recent.map((row) => (
+            <Link to={`/materials/${row.material_id}`} className="item" key={row.id}>
+              <Avatar name={row.student} size={40} />
+              <div className="grow">
+                <strong>{row.student}</strong>
+                <span className="muted small">{row.title} · {row.course_title}</span>
+              </div>
+              <div className="side">
+                <span className="muted small">{timeAgo(row.submitted_at)}</span>
+                <Icon name="right" size={18} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
       <div className="section">
         <div className="section-head"><h2>Your courses</h2></div>
         {data.courses.length === 0 && <Empty icon="book">No courses yet. Create the first one.</Empty>}
@@ -101,9 +123,9 @@ export default function Dashboard({ user, onCoursesChanged }) {
   useEffect(load, [])
 
   if (error) return <p className="error">{error}</p>
-  if (!data) return <p className="muted">Loading…</p>
+  if (!data) return <Loading />
 
-  if (data.role === 'teacher') {
+  if (data.role !== 'student') {
     return (
       <TeacherDashboard
         data={data}
@@ -125,10 +147,13 @@ export default function Dashboard({ user, onCoursesChanged }) {
             {data.deadlines.length === 0 ? 'You have nothing left to submit.' : `You have ${data.deadlines.length} ${data.deadlines.length === 1 ? 'deadline' : 'deadlines'} ahead.`}
           </p>
         </div>
+        {data.due_cards > 0 && (
+          <Link to="/flashcards" className="btn secondary"><Icon name="cards" size={16} />Review {data.due_cards} cards</Link>
+        )}
       </div>
 
       <div className="section" style={{ marginTop: 0 }}>
-        <div className="section-head"><h2>Deadlines</h2></div>
+        <div className="section-head"><h2>Deadlines</h2><Link to="/calendar" className="link-btn small">Open calendar</Link></div>
         {data.deadlines.length === 0 && <Empty icon="check">All caught up. Nothing to submit right now.</Empty>}
         {data.deadlines.map((item) => {
           const due = relative(item.deadline)
@@ -147,6 +172,25 @@ export default function Dashboard({ user, onCoursesChanged }) {
           )
         })}
       </div>
+
+      {data.announcements.length > 0 && (
+        <div className="section">
+          <div className="section-head"><h2>Announcements</h2></div>
+          {data.announcements.map((item) => (
+            <Link to={`/courses/${item.course_id}?tab=announcements`} className="item" key={item.id}>
+              <span className="icon-wrap accent"><Icon name="megaphone" size={20} /></span>
+              <div className="grow">
+                <strong>{item.title}</strong>
+                <span className="muted small">{item.course_title} · {timeAgo(item.created_at)}</span>
+              </div>
+              <div className="side">
+                {!item.read && <span className="badge accent">New</span>}
+                <Icon name="right" size={18} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="section">
         <div className="section-head"><h2>My progress</h2></div>

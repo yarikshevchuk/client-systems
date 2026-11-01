@@ -25,6 +25,16 @@ const ICONS = {
   alert: (<><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></>),
   help: (<><circle cx="12" cy="12" r="10" /><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></>),
   layers: (<><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></>),
+  bell: (<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>),
+  search: (<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>),
+  pin: (<><line x1="12" y1="17" x2="12" y2="22" /><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z" /></>),
+  megaphone: (<><path d="m3 11 18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></>),
+  edit: (<><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></>),
+  trash: (<><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></>),
+  user: (<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>),
+  shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  cards: (<><rect x="2" y="6" width="16" height="14" rx="2" /><path d="M6 6V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2" /></>),
+  eye: (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>),
 }
 
 export function Icon({ name, size = 18 }) {
@@ -356,4 +366,67 @@ export function ToastProvider({ children }) {
       </div>
     </ToastContext.Provider>
   )
+}
+
+export function Menu({ items, label = 'Actions' }) {
+  const [open, setOpen] = useState(false)
+  const [style, setStyle] = useState(null)
+  const ref = useRef(null)
+  const button = useRef(null)
+  useClickOutside(ref, () => setOpen(false))
+
+  function toggle() {
+    if (!open) setStyle(anchorStyle(button.current, items.length * 40 + 20, 190))
+    setOpen(!open)
+  }
+
+  return (
+    <div className="menu" ref={ref}>
+      <button type="button" ref={button} className="icon-btn" aria-label={label} onClick={toggle}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
+      </button>
+      {open && (
+        <ul className="select-list menu-list" style={style} role="menu">
+          {items.filter(Boolean).map((item) => (
+            <li
+              key={item.label}
+              role="menuitem"
+              className={item.danger ? 'danger' : ''}
+              onClick={() => {
+                setOpen(false)
+                item.onClick()
+              }}
+            >
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+export function Confirm({ title, text, confirm = 'Delete', onConfirm, onClose }) {
+  return (
+    <Modal title={title} onClose={onClose}>
+      <p className="muted">{text}</p>
+      <div className="modal-foot">
+        <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
+        <button
+          type="button"
+          className="btn danger"
+          onClick={() => {
+            onConfirm()
+            onClose()
+          }}
+        >
+          {confirm}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+export function Loading() {
+  return <p className="muted">Loading…</p>
 }
