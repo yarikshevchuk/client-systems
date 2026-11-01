@@ -48,19 +48,19 @@ def current_user(authorization: str = Header(default=None)):
     token = (authorization or "").removeprefix("Bearer ").strip()
     user = user_from_token(token) if token else None
     if not user:
-        raise HTTPException(401, "Not authenticated")
+        raise HTTPException(401, "Потрібно увійти")
     return user
 
 
 def teacher_only(user=Depends(current_user)):
     if user["role"] not in ("teacher", "admin"):
-        raise HTTPException(403, "You do not have access to this page")
+        raise HTTPException(403, "У вас немає доступу до цієї сторінки")
     return user
 
 
 def admin_only(user=Depends(current_user)):
     if user["role"] != "admin":
-        raise HTTPException(403, "You do not have access to this page")
+        raise HTTPException(403, "У вас немає доступу до цієї сторінки")
     return user
 
 
@@ -92,11 +92,11 @@ class PasswordIn(BaseModel):
 def register(body: RegisterIn):
     email = body.email.strip().lower()
     if "@" not in email:
-        raise HTTPException(422, "Enter a valid email")
+        raise HTTPException(422, "Введіть коректну електронну адресу")
     if body.role == "student" and not body.grp.strip():
-        raise HTTPException(422, "Students must enter their group")
+        raise HTTPException(422, "Студенти мають вказати групу")
     if db.one("select id from users where email = %s", (email,)):
-        raise HTTPException(409, "This email is already registered")
+        raise HTTPException(409, "Ця електронна адреса вже зареєстрована")
     user_id = db.insert(
         "insert into users (name, email, password_hash, role, grp, created_at) values (%s, %s, %s, %s, %s, %s)",
         (body.name.strip(), email, hash_password(body.password), body.role,
@@ -109,7 +109,7 @@ def register(body: RegisterIn):
 def login(body: LoginIn):
     user = db.one("select * from users where email = %s", (body.email.strip().lower(),))
     if not user or not check_password(body.password, user["password_hash"]):
-        raise HTTPException(401, "Wrong email or password")
+        raise HTTPException(401, "Невірна адреса або пароль")
     return {"token": make_token(user), "user": public(user)}
 
 
@@ -123,7 +123,7 @@ def me(user=Depends(current_user)):
 def update_me(body: ProfileIn, user=Depends(current_user)):
     grp = body.grp.strip() if user["role"] == "student" else ""
     if user["role"] == "student" and not grp:
-        raise HTTPException(422, "Students must enter their group")
+        raise HTTPException(422, "Студенти мають вказати групу")
     db.execute("update users set name = %s, bio = %s, grp = %s where id = %s",
                (body.name.strip(), body.bio.strip(), grp, user["id"]))
     return public(db.one("select * from users where id = %s", (user["id"],)))
@@ -132,6 +132,6 @@ def update_me(body: ProfileIn, user=Depends(current_user)):
 @router.put("/me/password")
 def change_password(body: PasswordIn, user=Depends(current_user)):
     if not check_password(body.old, user["password_hash"]):
-        raise HTTPException(400, "The current password is wrong")
+        raise HTTPException(400, "Поточний пароль неправильний")
     db.execute("update users set password_hash = %s where id = %s", (hash_password(body.new), user["id"]))
     return {"ok": True}

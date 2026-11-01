@@ -21,7 +21,7 @@ class AnnouncementIn(BaseModel):
 def get_announcement(announcement_id, user, manage=False):
     row = db.one("select * from announcements where id = %s", (announcement_id,))
     if not row:
-        raise HTTPException(404, "Announcement not found")
+        raise HTTPException(404, "Оголошення не знайдено")
     course = manage_course(row["course_id"], user) if manage else get_course(row["course_id"], user)
     return row, course
 

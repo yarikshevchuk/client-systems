@@ -88,7 +88,7 @@ export function Toggle({ checked, onChange, label }) {
   )
 }
 
-export function Select({ value, onChange, options, placeholder = 'Select…' }) {
+export function Select({ value, onChange, options, placeholder = 'Оберіть…' }) {
   const [open, setOpen] = useState(false)
   const [style, setStyle] = useState(null)
   const ref = useRef(null)
@@ -160,7 +160,7 @@ export function Stepper({ value, onChange, min = 0, max = 100, placeholder = '',
   const clamp = (n) => Math.min(max, Math.max(min, n))
   return (
     <div className={small ? 'stepper sm' : 'stepper'}>
-      <button type="button" aria-label="Decrease" disabled={value !== '' && number <= min} onClick={() => onChange(clamp(number - 1))}>−</button>
+      <button type="button" aria-label="Зменшити" disabled={value !== '' && number <= min} onClick={() => onChange(clamp(number - 1))}>−</button>
       <input
         inputMode="numeric"
         value={value}
@@ -170,12 +170,12 @@ export function Stepper({ value, onChange, min = 0, max = 100, placeholder = '',
           onChange(digits === '' ? '' : clamp(parseInt(digits, 10)))
         }}
       />
-      <button type="button" aria-label="Increase" disabled={number >= max} onClick={() => onChange(clamp(number + 1))}>+</button>
+      <button type="button" aria-label="Збільшити" disabled={number >= max} onClick={() => onChange(clamp(number + 1))}>+</button>
     </div>
   )
 }
 
-const formatSize = (bytes) => (bytes > 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB')
+const formatSize = (bytes) => (bytes > 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' МБ' : Math.max(1, Math.round(bytes / 1024)) + ' КБ')
 
 export function FileDrop({ file, onChange, hint }) {
   const input = useRef(null)
@@ -195,7 +195,7 @@ export function FileDrop({ file, onChange, hint }) {
             <strong>{file.name}</strong>
             <span className="muted small">{formatSize(file.size)}</span>
           </div>
-          <button type="button" className="icon-btn" aria-label="Remove file" onClick={() => { onChange(null); input.current.value = '' }}>
+          <button type="button" className="icon-btn" aria-label="Видалити файл" onClick={() => { onChange(null); input.current.value = '' }}>
             <Icon name="x" size={16} />
           </button>
         </div>
@@ -211,7 +211,7 @@ export function FileDrop({ file, onChange, hint }) {
           onDrop={(event) => { event.preventDefault(); setOver(false); take(event.dataTransfer.files) }}
         >
           <span className="icon-wrap"><Icon name="upload" size={20} /></span>
-          <div><strong>Drop your report here</strong> or click to browse</div>
+          <div><strong>Перетягніть файл сюди</strong> або натисніть, щоб обрати</div>
           <span className="muted small">{hint}</span>
         </div>
       )}
@@ -220,7 +220,7 @@ export function FileDrop({ file, onChange, hint }) {
 }
 
 const pad = (n) => String(n).padStart(2, '0')
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const MONTHS = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень']
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 
 export function DateTimeField({ value, onChange }) {
@@ -252,7 +252,7 @@ export function DateTimeField({ value, onChange }) {
     if (TIME.test(text) && value) onChange(value.slice(0, 11) + text)
   }
 
-  const label = selected ? selected.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Pick date and time'
+  const label = selected ? selected.toLocaleString('uk-UA', { dateStyle: 'medium', timeStyle: 'short' }) : 'Оберіть дату й час'
 
   return (
     <div className="picker" ref={ref} onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}>
@@ -271,12 +271,12 @@ export function DateTimeField({ value, onChange }) {
       {open && (
         <div className="popover" style={style}>
           <div className="cal-head">
-            <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><Icon name="left" size={16} /></button>
+            <button type="button" className="icon-btn" aria-label="Попередній місяць" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><Icon name="left" size={16} /></button>
             {MONTHS[month.getMonth()]} {month.getFullYear()}
-            <button type="button" className="icon-btn" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><Icon name="right" size={16} /></button>
+            <button type="button" className="icon-btn" aria-label="Наступний місяць" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><Icon name="right" size={16} /></button>
           </div>
           <div className="cal-grid">
-            {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((name) => <span key={name} className="dow">{name}</span>)}
+            {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map((name) => <span key={name} className="dow">{name}</span>)}
             {cells.map((day, index) =>
               day === null ? (
                 <span key={'blank' + index} />
@@ -293,9 +293,9 @@ export function DateTimeField({ value, onChange }) {
             )}
           </div>
           <div className="cal-foot">
-            <span className="muted small">Time (24h)</span>
+            <span className="muted small">Час (24 год)</span>
             <input className="input" value={time} onChange={(event) => changeTime(event.target.value)} placeholder="23:59" />
-            <button type="button" className="btn sm" onClick={() => setOpen(false)}>Done</button>
+            <button type="button" className="btn sm" onClick={() => setOpen(false)}>Готово</button>
           </div>
         </div>
       )}
@@ -315,7 +315,7 @@ export function Modal({ title, onClose, children }) {
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}><Icon name="x" /></button>
+          <button type="button" className="icon-btn" aria-label="Закрити" onClick={onClose}><Icon name="x" /></button>
         </div>
         {children}
       </div>
@@ -368,7 +368,7 @@ export function ToastProvider({ children }) {
   )
 }
 
-export function Menu({ items, label = 'Actions' }) {
+export function Menu({ items, label = 'Дії' }) {
   const [open, setOpen] = useState(false)
   const [style, setStyle] = useState(null)
   const ref = useRef(null)
@@ -406,12 +406,12 @@ export function Menu({ items, label = 'Actions' }) {
   )
 }
 
-export function Confirm({ title, text, confirm = 'Delete', onConfirm, onClose }) {
+export function Confirm({ title, text, confirm = 'Видалити', onConfirm, onClose }) {
   return (
     <Modal title={title} onClose={onClose}>
       <p className="muted">{text}</p>
       <div className="modal-foot">
-        <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
         <button
           type="button"
           className="btn danger"
@@ -428,5 +428,5 @@ export function Confirm({ title, text, confirm = 'Delete', onConfirm, onClose })
 }
 
 export function Loading() {
-  return <p className="muted">Loading…</p>
+  return <p className="muted">Завантаження…</p>
 }

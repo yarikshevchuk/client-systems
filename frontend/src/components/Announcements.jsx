@@ -13,7 +13,7 @@ function NewAnnouncement({ courseId, onSaved, onClose }) {
     setError('')
     try {
       await api(`/courses/${courseId}/announcements`, { method: 'POST', body: form })
-      toast('Announcement published')
+      toast('Оголошення опубліковано')
       onSaved()
       onClose()
     } catch (err) {
@@ -22,24 +22,24 @@ function NewAnnouncement({ courseId, onSaved, onClose }) {
   }
 
   return (
-    <Modal title="New announcement" onClose={onClose}>
+    <Modal title="Нове оголошення" onClose={onClose}>
       <form onSubmit={save} className="stack">
         <label className="field">
-          <span className="label">Title</span>
+          <span className="label">Заголовок</span>
           <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} autoFocus required />
         </label>
         <label className="field">
-          <span className="label">Message</span>
+          <span className="label">Повідомлення</span>
           <textarea className="textarea" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} required />
         </label>
         <div className="row between">
-          <span>Pin to the top</span>
-          <Toggle label="Pin to the top" checked={form.pinned} onChange={(pinned) => setForm({ ...form, pinned })} />
+          <span>Закріпити вгорі</span>
+          <Toggle label="Закріпити вгорі" checked={form.pinned} onChange={(pinned) => setForm({ ...form, pinned })} />
         </div>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn">Publish</button>
+          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
+          <button type="submit" className="btn">Опублікувати</button>
         </div>
       </form>
     </Modal>
@@ -54,11 +54,11 @@ function Readers({ announcement, onClose }) {
   }, [announcement.id])
 
   return (
-    <Modal title="Who has read it" onClose={onClose}>
+    <Modal title="Хто прочитав" onClose={onClose}>
       {!rows ? <Loading /> : rows.map((row) => (
         <div className="row between" key={row.id} style={{ padding: '8px 0', borderTop: '1px solid var(--border)' }}>
           <div className="row"><Avatar name={row.name} size={28} />{row.name}</div>
-          {row.read_at ? <span className="badge ok">Read {timeAgo(row.read_at)}</span> : <span className="badge warn">Not read</span>}
+          {row.read_at ? <span className="badge ok">Прочитано {timeAgo(row.read_at)}</span> : <span className="badge warn">Не прочитано</span>}
         </div>
       ))}
     </Modal>
@@ -99,23 +99,23 @@ export default function Announcements({ courseId, canManage }) {
     <>
       {canManage && (
         <div className="row" style={{ marginBottom: 16 }}>
-          <button className="btn" onClick={() => setDialog({ type: 'new' })}><Icon name="megaphone" size={16} />New announcement</button>
+          <button className="btn" onClick={() => setDialog({ type: 'new' })}><Icon name="megaphone" size={16} />Нове оголошення</button>
         </div>
       )}
-      {items.length === 0 && <Empty icon="megaphone">No announcements yet.</Empty>}
+      {items.length === 0 && <Empty icon="megaphone">Оголошень ще немає.</Empty>}
       {items.map((item) => (
         <article className={!canManage && !item.read ? 'card announcement unread' : 'card announcement'} key={item.id}>
           <div className="row between">
             <div className="row wrap" style={{ gap: 8 }}>
-              {item.pinned && <span className="badge accent"><Icon name="pin" size={12} />Pinned</span>}
-              {!canManage && !item.read && <span className="badge warn">New</span>}
+              {item.pinned && <span className="badge accent"><Icon name="pin" size={12} />Закріплено</span>}
+              {!canManage && !item.read && <span className="badge warn">Нове</span>}
               <h3>{item.title}</h3>
             </div>
             {canManage && (
               <Menu
                 items={[
-                  { label: item.pinned ? 'Unpin' : 'Pin to the top', onClick: () => act(`/announcements/${item.id}/pin`, { method: 'POST' }) },
-                  { label: 'Delete', danger: true, onClick: () => setDialog({ type: 'delete', item }) },
+                  { label: item.pinned ? 'Відкріпити' : 'Закріпити вгорі', onClick: () => act(`/announcements/${item.id}/pin`, { method: 'POST' }) },
+                  { label: 'Видалити', danger: true, onClick: () => setDialog({ type: 'delete', item }) },
                 ]}
               />
             )}
@@ -125,12 +125,12 @@ export default function Announcements({ courseId, canManage }) {
             <span className="row muted small"><Avatar name={item.author} size={22} />{item.author} · {timeAgo(item.created_at)}</span>
             {canManage ? (
               <button className="btn secondary sm" onClick={() => setDialog({ type: 'readers', item })}>
-                <Icon name="eye" size={14} />{item.reads - 1} / {item.audience} read
+                <Icon name="eye" size={14} />{item.reads - 1} / {item.audience} прочитали
               </button>
             ) : item.read ? (
-              <span className="badge ok"><Icon name="check" size={12} />Read</span>
+              <span className="badge ok"><Icon name="check" size={12} />Прочитано</span>
             ) : (
-              <button className="btn secondary sm" onClick={() => markRead(item)}><Icon name="check" size={14} />Confirm that I read it</button>
+              <button className="btn secondary sm" onClick={() => markRead(item)}><Icon name="check" size={14} />Підтвердити, що прочитав(ла)</button>
             )}
           </div>
         </article>
@@ -138,7 +138,7 @@ export default function Announcements({ courseId, canManage }) {
       {dialog && dialog.type === 'new' && <NewAnnouncement courseId={courseId} onSaved={load} onClose={() => setDialog(null)} />}
       {dialog && dialog.type === 'readers' && <Readers announcement={dialog.item} onClose={() => setDialog(null)} />}
       {dialog && dialog.type === 'delete' && (
-        <Confirm title="Delete announcement" text={`Delete “${dialog.item.title}”?`} onConfirm={() => act(`/announcements/${dialog.item.id}`, { method: 'DELETE' }, 'Announcement deleted')} onClose={() => setDialog(null)} />
+        <Confirm title="Видалити оголошення" text={`Видалити «${dialog.item.title}»?`} onConfirm={() => act(`/announcements/${dialog.item.id}`, { method: 'DELETE' }, 'Оголошення видалено')} onClose={() => setDialog(null)} />
       )}
     </>
   )

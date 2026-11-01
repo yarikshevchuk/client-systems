@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from '../api.js'
+import { api, roleName } from '../api.js'
 import { Avatar, useToast } from '../components/ui.jsx'
 
 export default function Profile({ user, onChanged }) {
@@ -14,7 +14,7 @@ export default function Profile({ user, onChanged }) {
     setError('')
     try {
       onChanged(await api('/me', { method: 'PUT', body: form }))
-      toast('Profile saved')
+      toast('Профіль збережено')
     } catch (err) {
       setError(err.message)
     }
@@ -26,7 +26,7 @@ export default function Profile({ user, onChanged }) {
     try {
       await api('/me/password', { method: 'PUT', body: password })
       setPassword({ old: '', new: '' })
-      toast('Password changed')
+      toast('Пароль змінено')
     } catch (err) {
       setPasswordError(err.message)
     }
@@ -40,7 +40,7 @@ export default function Profile({ user, onChanged }) {
           <div>
             <h1>{user.name}</h1>
             <p className="row" style={{ gap: 8, marginTop: 4 }}>
-              <span className="badge accent">{user.role === 'teacher' ? 'Lecturer' : user.role}</span>
+              <span className="badge accent">{roleName(user.role)}</span>
               <span>{user.email}</span>
             </p>
           </div>
@@ -48,36 +48,36 @@ export default function Profile({ user, onChanged }) {
       </div>
       <div className="grid two">
         <form className="card stack" onSubmit={save}>
-          <h2>Profile</h2>
+          <h2>Профіль</h2>
           <label className="field">
-            <span className="label">Full name</span>
+            <span className="label">Повне ім'я</span>
             <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </label>
           {user.role === 'student' && (
             <label className="field">
-              <span className="label">Group</span>
+              <span className="label">Група</span>
               <input className="input" value={form.grp} onChange={(e) => setForm({ ...form, grp: e.target.value })} required />
             </label>
           )}
           <label className="field">
-            <span className="label">About me</span>
+            <span className="label">Про себе</span>
             <textarea className="textarea" style={{ minHeight: 80 }} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
           </label>
           {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
-          <div><button type="submit" className="btn">Save profile</button></div>
+          <div><button type="submit" className="btn">Зберегти профіль</button></div>
         </form>
         <form className="card stack" onSubmit={change}>
-          <h2>Password</h2>
+          <h2>Пароль</h2>
           <label className="field">
-            <span className="label">Current password</span>
+            <span className="label">Поточний пароль</span>
             <input className="input" type="password" value={password.old} onChange={(e) => setPassword({ ...password, old: e.target.value })} required />
           </label>
           <label className="field">
-            <span className="label">New password</span>
-            <input className="input" type="password" value={password.new} onChange={(e) => setPassword({ ...password, new: e.target.value })} placeholder="At least 4 characters" required />
+            <span className="label">Новий пароль</span>
+            <input className="input" type="password" value={password.new} onChange={(e) => setPassword({ ...password, new: e.target.value })} placeholder="Щонайменше 4 символи" required />
           </label>
           {passwordError && <p className="error" style={{ margin: 0 }}>{passwordError}</p>}
-          <div><button type="submit" className="btn">Change password</button></div>
+          <div><button type="submit" className="btn">Змінити пароль</button></div>
         </form>
       </div>
     </>

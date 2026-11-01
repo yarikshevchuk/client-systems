@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, download, relative } from '../api.js'
 import { colorFor, Empty, Icon, Loading } from '../components/ui.jsx'
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const MONTHS = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень']
 const key = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
 
 export default function Calendar() {
@@ -33,20 +33,20 @@ export default function Calendar() {
     <>
       <div className="page-head">
         <div>
-          <h1>Calendar</h1>
-          <p>Deadlines of all your courses.</p>
+          <h1>Календар</h1>
+          <p>Дедлайни всіх ваших курсів.</p>
         </div>
-        <button className="btn secondary" onClick={() => download('/calendar.ics', 'deadlines.ics')}><Icon name="download" size={16} />Export .ics</button>
+        <button className="btn secondary" onClick={() => download('/calendar.ics', 'deadlines.ics')}><Icon name="download" size={16} />Експорт .ics</button>
       </div>
       <div className="calendar-layout">
         <div className="card">
           <div className="cal-head big">
-            <button className="icon-btn" aria-label="Previous month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><Icon name="left" /></button>
+            <button className="icon-btn" aria-label="Попередній місяць" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><Icon name="left" /></button>
             <strong>{MONTHS[month.getMonth()]} {month.getFullYear()}</strong>
-            <button className="icon-btn" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><Icon name="right" /></button>
+            <button className="icon-btn" aria-label="Наступний місяць" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><Icon name="right" /></button>
           </div>
           <div className="month">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((name) => <span key={name} className="dow">{name}</span>)}
+            {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map((name) => <span key={name} className="dow">{name}</span>)}
             {cells.map((date, index) => {
               if (!date) return <span key={'blank' + index} />
               const list = byDay[key(date)] || []
@@ -64,8 +64,8 @@ export default function Calendar() {
         </div>
         <div>
           <div className="card">
-            <div className="card-title"><h2>{selected.toLocaleDateString([], { dateStyle: 'full' })}</h2></div>
-            {chosen.length === 0 && <p className="muted small">No deadlines on this day.</p>}
+            <div className="card-title"><h2>{selected.toLocaleDateString('uk-UA', { dateStyle: 'full' })}</h2></div>
+            {chosen.length === 0 && <p className="muted small">У цей день дедлайнів немає.</p>}
             {chosen.map((event) => {
               const due = relative(event.deadline)
               return (
@@ -73,23 +73,23 @@ export default function Calendar() {
                   <span className="icon-wrap" style={{ background: colorFor(event.course_id) + '22', color: colorFor(event.course_id) }}><Icon name="clock" size={18} /></span>
                   <div className="grow">
                     <strong>{event.title}</strong>
-                    <span className="muted small">{event.course_title} · {new Date(event.deadline).toLocaleTimeString([], { timeStyle: 'short' })}</span>
+                    <span className="muted small">{event.course_title} · {new Date(event.deadline).toLocaleTimeString('uk-UA', { timeStyle: 'short' })}</span>
                   </div>
                   <div className="side">
-                    {event.grade !== null && event.grade !== undefined ? <span className="badge ok">{event.grade} / {event.max_points}</span> : event.submission_id ? <span className="badge accent">Submitted</span> : <span className={`badge ${due.tone}`}>{due.text}</span>}
+                    {event.grade !== null && event.grade !== undefined ? <span className="badge ok">{event.grade} / {event.max_points}</span> : event.submission_id ? <span className="badge accent">Здано</span> : <span className={`badge ${due.tone}`}>{due.text}</span>}
                   </div>
                 </Link>
               )
             })}
           </div>
           <div className="card">
-            <div className="card-title"><h2>Coming up</h2></div>
-            {upcoming.length === 0 && <Empty icon="calendar">Nothing is coming up.</Empty>}
+            <div className="card-title"><h2>Найближче</h2></div>
+            {upcoming.length === 0 && <Empty icon="calendar">Найближчих дедлайнів немає.</Empty>}
             {upcoming.map((event) => (
               <Link to={`/materials/${event.id}`} className="upcoming" key={event.id}>
                 <span className="dot" style={{ background: colorFor(event.course_id) }} />
                 <span className="grow">{event.title}</span>
-                <span className="muted small">{new Date(event.deadline).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
+                <span className="muted small">{new Date(event.deadline).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' })}</span>
               </Link>
             ))}
           </div>

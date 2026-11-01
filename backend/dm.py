@@ -43,7 +43,7 @@ def conversations(user=Depends(current_user)):
 def thread(other_id: int, user=Depends(current_user)):
     other = db.one("select id, name, role from users where id = %s", (other_id,))
     if not other:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(404, "Користувача не знайдено")
     db.execute("update direct_messages set read_at = %s where sender_id = %s and recipient_id = %s and read_at is null",
                (datetime.now(), other_id, user["id"]))
     messages = db.select(
@@ -59,10 +59,10 @@ async def send(other_id: int, body: DirectIn, user=Depends(current_user)):
         "select 1 as ok from direct_messages where (sender_id = %s and recipient_id = %s) or "
         "(sender_id = %s and recipient_id = %s) limit 1", (user["id"], other_id, other_id, user["id"]))
     if not existing and not can_message(user, other_id):
-        raise HTTPException(403, "You can write only to people from your courses")
+        raise HTTPException(403, "Писати можна лише людям з ваших курсів")
     text = body.text.strip()
     if not text:
-        raise HTTPException(422, "Message is empty")
+        raise HTTPException(422, "Повідомлення порожнє")
     message_id = db.insert(
         "insert into direct_messages (sender_id, recipient_id, text, created_at) values (%s, %s, %s, %s)",
         (user["id"], other_id, text, datetime.now()))

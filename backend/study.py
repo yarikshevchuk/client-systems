@@ -60,7 +60,7 @@ def create_card(body: CardIn, user=Depends(current_user)):
 def own_card(card_id, user):
     card = db.one("select * from flashcards where id = %s and user_id = %s", (card_id, user["id"]))
     if not card:
-        raise HTTPException(404, "Card not found")
+        raise HTTPException(404, "Картку не знайдено")
     return card
 
 

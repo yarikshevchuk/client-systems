@@ -33,8 +33,8 @@ def users(user=Depends(admin_only)):
 @router.put("/users/{user_id}")
 def set_role(user_id: int, body: RoleIn, user=Depends(admin_only)):
     if user_id == user["id"]:
-        raise HTTPException(400, "You cannot change your own role")
+        raise HTTPException(400, "Ви не можете змінити власну роль")
     if not db.one("select id from users where id = %s", (user_id,)):
-        raise HTTPException(404, "User not found")
+        raise HTTPException(404, "Користувача не знайдено")
     db.execute("update users set role = %s where id = %s", (body.role, user_id))
     return db.one("select id, name, email, role, grp from users where id = %s", (user_id,))

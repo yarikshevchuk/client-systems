@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmt, relative, timeAgo } from '../api.js'
+import { api, fmt, plural, relative, timeAgo } from '../api.js'
 import { Avatar, colorFor, Empty, Icon, Loading, Modal, ProgressBar, useToast } from '../components/ui.jsx'
 
 function NewCourse({ onClose, onCreated }) {
@@ -14,7 +14,7 @@ function NewCourse({ onClose, onCreated }) {
     setError('')
     try {
       await api('/courses', { method: 'POST', body: form })
-      toast('Course created')
+      toast('Курс створено')
       onCreated()
       onClose()
     } catch (err) {
@@ -23,24 +23,24 @@ function NewCourse({ onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Add a course" onClose={onClose}>
+    <Modal title="Додати курс" onClose={onClose}>
       <form onSubmit={create} className="stack">
         <label className="field">
-          <span className="label">Title</span>
-          <input className="input" value={form.title} onChange={set('title')} placeholder="e.g. Computer Networks" autoFocus required />
+          <span className="label">Назва</span>
+          <input className="input" value={form.title} onChange={set('title')} placeholder="наприклад, Комп'ютерні мережі" autoFocus required />
         </label>
         <label className="field">
-          <span className="label">Description</span>
-          <textarea className="textarea" style={{ minHeight: 80 }} value={form.description} onChange={set('description')} placeholder="What is this course about?" />
+          <span className="label">Опис</span>
+          <textarea className="textarea" style={{ minHeight: 80 }} value={form.description} onChange={set('description')} placeholder="Про що цей курс?" />
         </label>
         <label className="field">
-          <span className="label">Student group</span>
+          <span className="label">Група студентів</span>
           <input className="input" value={form.grp} onChange={set('grp')} required />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn">Add course</button>
+          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
+          <button type="submit" className="btn">Додати курс</button>
         </div>
       </form>
     </Modal>
@@ -60,19 +60,19 @@ function TeacherDashboard({ data, user, onChanged }) {
     <>
       <div className="page-head">
         <div>
-          <h1>Hi, {user.name.split(' ')[0]}</h1>
-          <p>Your courses and the work waiting for you.</p>
+          <h1>Вітаємо, {user.name.split(' ')[0]}</h1>
+          <p>Ваші курси та роботи, які чекають на вас.</p>
         </div>
-        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />New course</button>
+        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Новий курс</button>
       </div>
       <div className="grid three">
-        <div className="card tile"><span className="icon-wrap"><Icon name="book" /></span><div><strong>{data.courses.length}</strong><span className="muted small">Courses</span></div></div>
-        <div className="card tile"><span className="icon-wrap"><Icon name="users" /></span><div><strong>{students}</strong><span className="muted small">Students</span></div></div>
-        <div className="card tile"><span className="icon-wrap"><Icon name="file" /></span><div><strong>{ungraded}</strong><span className="muted small">Waiting for a grade</span></div></div>
+        <div className="card tile"><span className="icon-wrap"><Icon name="book" /></span><div><strong>{data.courses.length}</strong><span className="muted small">Курси</span></div></div>
+        <div className="card tile"><span className="icon-wrap"><Icon name="users" /></span><div><strong>{students}</strong><span className="muted small">Студенти</span></div></div>
+        <div className="card tile"><span className="icon-wrap"><Icon name="file" /></span><div><strong>{ungraded}</strong><span className="muted small">Чекають на оцінку</span></div></div>
       </div>
       {data.recent.length > 0 && (
         <div className="section">
-          <div className="section-head"><h2>To grade</h2></div>
+          <div className="section-head"><h2>На перевірку</h2></div>
           {data.recent.map((row) => (
             <Link to={`/materials/${row.material_id}`} className="item" key={row.id}>
               <Avatar name={row.student} size={40} />
@@ -89,19 +89,19 @@ function TeacherDashboard({ data, user, onChanged }) {
         </div>
       )}
       <div className="section">
-        <div className="section-head"><h2>Your courses</h2></div>
-        {data.courses.length === 0 && <Empty icon="book">No courses yet. Create the first one.</Empty>}
+        <div className="section-head"><h2>Ваші курси</h2></div>
+        {data.courses.length === 0 && <Empty icon="book">Курсів ще немає. Створіть перший.</Empty>}
         <div className="grid two">
           {data.courses.map((course) => (
             <Link to={`/courses/${course.id}`} className="card course-card" key={course.id} style={{ '--stripe': colorFor(course.id) }}>
               <h3>{course.title}</h3>
               <div className="meta">
-                <span className="badge">Group {course.grp}</span>
-                <span>{course.students} students</span>
+                <span className="badge">Група {course.grp}</span>
+                <span>{course.students} {plural(course.students, 'студент', 'студенти', 'студентів')}</span>
               </div>
               <div className="row between">
-                {course.ungraded > 0 ? <span className="badge warn">{course.ungraded} to grade</span> : <span className="badge ok">All graded</span>}
-                <span className="row small muted">Open <Icon name="right" size={16} /></span>
+                {course.ungraded > 0 ? <span className="badge warn">{course.ungraded} на перевірку</span> : <span className="badge ok">Усе перевірено</span>}
+                <span className="row small muted">Відкрити <Icon name="right" size={16} /></span>
               </div>
             </Link>
           ))}
@@ -142,19 +142,19 @@ export default function Dashboard({ user, onCoursesChanged }) {
     <>
       <div className="page-head">
         <div>
-          <h1>Hi, {user.name.split(' ')[0]}</h1>
+          <h1>Вітаємо, {user.name.split(' ')[0]}</h1>
           <p>
-            {data.deadlines.length === 0 ? 'You have nothing left to submit.' : `You have ${data.deadlines.length} ${data.deadlines.length === 1 ? 'deadline' : 'deadlines'} ahead.`}
+            {data.deadlines.length === 0 ? 'Вам нічого здавати.' : `Попереду ${data.deadlines.length} ${plural(data.deadlines.length, 'дедлайн', 'дедлайни', 'дедлайнів')}.`}
           </p>
         </div>
         {data.due_cards > 0 && (
-          <Link to="/flashcards" className="btn secondary"><Icon name="cards" size={16} />Review {data.due_cards} cards</Link>
+          <Link to="/flashcards" className="btn secondary"><Icon name="cards" size={16} />Повторити {data.due_cards} {plural(data.due_cards, 'картку', 'картки', 'карток')}</Link>
         )}
       </div>
 
       <div className="section" style={{ marginTop: 0 }}>
-        <div className="section-head"><h2>Deadlines</h2><Link to="/calendar" className="link-btn small">Open calendar</Link></div>
-        {data.deadlines.length === 0 && <Empty icon="check">All caught up. Nothing to submit right now.</Empty>}
+        <div className="section-head"><h2>Дедлайни</h2><Link to="/calendar" className="link-btn small">Відкрити календар</Link></div>
+        {data.deadlines.length === 0 && <Empty icon="check">Усе здано. Зараз нічого здавати.</Empty>}
         {data.deadlines.map((item) => {
           const due = relative(item.deadline)
           return (
@@ -162,7 +162,7 @@ export default function Dashboard({ user, onCoursesChanged }) {
               <span className={`icon-wrap ${due.tone === 'ok' ? '' : due.tone}`}><Icon name="clock" size={20} /></span>
               <div className="grow">
                 <strong>{item.title}</strong>
-                <span className="muted small">{item.course_title} · {fmt(item.deadline)} · {item.max_points} points</span>
+                <span className="muted small">{item.course_title} · {fmt(item.deadline)} · {item.max_points} балів</span>
               </div>
               <div className="side">
                 <span className={`badge ${due.tone}`}>{due.text}</span>
@@ -175,7 +175,7 @@ export default function Dashboard({ user, onCoursesChanged }) {
 
       {data.announcements.length > 0 && (
         <div className="section">
-          <div className="section-head"><h2>Announcements</h2></div>
+          <div className="section-head"><h2>Оголошення</h2></div>
           {data.announcements.map((item) => (
             <Link to={`/courses/${item.course_id}?tab=announcements`} className="item" key={item.id}>
               <span className="icon-wrap accent"><Icon name="megaphone" size={20} /></span>
@@ -184,7 +184,7 @@ export default function Dashboard({ user, onCoursesChanged }) {
                 <span className="muted small">{item.course_title} · {timeAgo(item.created_at)}</span>
               </div>
               <div className="side">
-                {!item.read && <span className="badge accent">New</span>}
+                {!item.read && <span className="badge accent">Нове</span>}
                 <Icon name="right" size={18} />
               </div>
             </Link>
@@ -193,7 +193,7 @@ export default function Dashboard({ user, onCoursesChanged }) {
       )}
 
       <div className="section">
-        <div className="section-head"><h2>My progress</h2></div>
+        <div className="section-head"><h2>Мій прогрес</h2></div>
         <div className="grid two">
           {data.courses.map((course) => {
             const color = colorFor(course.id)
@@ -206,9 +206,9 @@ export default function Dashboard({ user, onCoursesChanged }) {
                 </div>
                 <ProgressBar percent={course.total_max ? (100 * course.earned) / course.total_max : 0} color={color} />
                 <dl className="stats" style={{ margin: '14px 0 0' }}>
-                  <div className="stat"><dt>Earned</dt><dd>{course.earned}</dd></div>
-                  <div className="stat"><dt>On graded work</dt><dd>{course.percent_graded === null ? '—' : `${course.percent_graded}%`}</dd></div>
-                  <div className="stat"><dt>Max possible</dt><dd>{course.total_max}</dd></div>
+                  <div className="stat"><dt>Зароблено</dt><dd>{course.earned}</dd></div>
+                  <div className="stat"><dt>За оціненими</dt><dd>{course.percent_graded === null ? '—' : `${course.percent_graded}%`}</dd></div>
+                  <div className="stat"><dt>Максимум</dt><dd>{course.total_max}</dd></div>
                 </dl>
               </Link>
             )

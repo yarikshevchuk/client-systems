@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api, timeAgo } from '../api.js'
+import { api, plural, timeAgo } from '../api.js'
 import { Avatar, colorFor, Empty, Icon, Loading, Modal, useToast } from '../components/ui.jsx'
 
 function NewSpace({ onClose }) {
@@ -15,7 +15,7 @@ function NewSpace({ onClose }) {
     setError('')
     try {
       const space = await api('/spaces', { method: 'POST', body: form })
-      toast('Space created')
+      toast('Простір створено')
       navigate(`/spaces/${space.id}`)
     } catch (err) {
       setError(err.message)
@@ -23,24 +23,24 @@ function NewSpace({ onClose }) {
   }
 
   return (
-    <Modal title="New study space" onClose={onClose}>
+    <Modal title="Новий навчальний простір" onClose={onClose}>
       <form onSubmit={create} className="stack">
         <label className="field">
-          <span className="label">Name</span>
-          <input className="input" value={form.title} onChange={set('title')} placeholder="e.g. Graph algorithms club" autoFocus required />
+          <span className="label">Назва</span>
+          <input className="input" value={form.title} onChange={set('title')} placeholder="наприклад, Клуб графових алгоритмів" autoFocus required />
         </label>
         <label className="field">
-          <span className="label">Topic</span>
-          <input className="input" value={form.topic} onChange={set('topic')} placeholder="e.g. Algorithms" />
+          <span className="label">Тема</span>
+          <input className="input" value={form.topic} onChange={set('topic')} placeholder="наприклад, Алгоритми" />
         </label>
         <label className="field">
-          <span className="label">What will you do here?</span>
+          <span className="label">Чим ви займатиметеся тут?</span>
           <textarea className="textarea" style={{ minHeight: 80 }} value={form.description} onChange={set('description')} />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn">Create space</button>
+          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
+          <button type="submit" className="btn">Створити простір</button>
         </div>
       </form>
     </Modal>
@@ -61,28 +61,28 @@ export default function Spaces() {
     <>
       <div className="page-head">
         <div>
-          <h1>Study spaces</h1>
-          <p>Self-organised groups: find people who study the same topic, or start your own.</p>
+          <h1>Навчальні простори</h1>
+          <p>Групи для самоорганізованого навчання: знайдіть людей із тією ж темою або створіть власну.</p>
         </div>
-        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />New space</button>
+        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Новий простір</button>
       </div>
       <div className="searchbox wide">
         <Icon name="search" size={16} />
-        <input placeholder="Search by name or topic…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input placeholder="Пошук за назвою або темою…" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
-      {!spaces ? <Loading /> : spaces.length === 0 ? <Empty icon="users">No spaces found.</Empty> : (
+      {!spaces ? <Loading /> : spaces.length === 0 ? <Empty icon="users">Просторів не знайдено.</Empty> : (
         <div className="grid two" style={{ marginTop: 16 }}>
           {spaces.map((space) => (
             <Link to={`/spaces/${space.id}`} className="card course-card" key={space.id} style={{ '--stripe': colorFor(space.id + space.title) }}>
               <h3>{space.title}</h3>
               <div className="meta">
                 {space.topic && <span className="badge">{space.topic}</span>}
-                <span>{space.members} {space.members === 1 ? 'member' : 'members'}</span>
+                <span>{space.members} {plural(space.members, 'учасник', 'учасники', 'учасників')}</span>
               </div>
-              <p className="muted small clamp">{space.description || 'No description yet.'}</p>
+              <p className="muted small clamp">{space.description || 'Опису ще немає.'}</p>
               <div className="row between" style={{ marginTop: 12 }}>
                 <span className="row muted small"><Avatar name={space.owner} size={22} />{space.owner} · {timeAgo(space.created_at)}</span>
-                {space.joined ? <span className="badge ok">Joined</span> : <span className="badge accent">Join</span>}
+                {space.joined ? <span className="badge ok">Ви в просторі</span> : <span className="badge accent">Приєднатися</span>}
               </div>
             </Link>
           ))}

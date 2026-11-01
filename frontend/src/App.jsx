@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { api, getToken, setToken } from './api.js'
+import { api, getToken, roleName, setToken } from './api.js'
 import { Avatar, colorFor, Icon, Loading } from './components/ui.jsx'
 import Notifications from './components/Notifications.jsx'
 import { LiveProvider, useLive } from './live.jsx'
@@ -41,7 +41,7 @@ function SearchBox() {
       }}
     >
       <Icon name="search" size={16} />
-      <input placeholder="Search courses, materials, messages…" value={text} onChange={(e) => setText(e.target.value)} />
+      <input placeholder="Пошук курсів, матеріалів, повідомлень…" value={text} onChange={(e) => setText(e.target.value)} />
     </form>
   )
 }
@@ -72,21 +72,21 @@ function Shell({ user, setUser, logout }) {
       <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
         <Brand />
         <nav className="nav">
-          <NavLink to="/" end className={link}><Icon name="home" /><span className="text">Dashboard</span></NavLink>
-          <NavLink to="/calendar" className={link}><Icon name="calendar" /><span className="text">Calendar</span></NavLink>
+          <NavLink to="/" end className={link}><Icon name="home" /><span className="text">Головна</span></NavLink>
+          <NavLink to="/calendar" className={link}><Icon name="calendar" /><span className="text">Календар</span></NavLink>
           <NavLink to="/messages" className={link}>
-            <Icon name="chat" /><span className="text">Messages</span>
+            <Icon name="chat" /><span className="text">Повідомлення</span>
             {counters.messages > 0 && <span className="count">{counters.messages}</span>}
           </NavLink>
-          <NavLink to="/spaces" className={link}><Icon name="users" /><span className="text">Study spaces</span></NavLink>
+          <NavLink to="/spaces" className={link}><Icon name="users" /><span className="text">Навчальні простори</span></NavLink>
           {user.role === 'student' && (
             <NavLink to="/flashcards" className={link}>
-              <Icon name="cards" /><span className="text">Flashcards</span>
+              <Icon name="cards" /><span className="text">Картки</span>
               {dueCards > 0 && <span className="count">{dueCards}</span>}
             </NavLink>
           )}
-          {user.role === 'admin' && <NavLink to="/admin" className={link}><Icon name="shield" /><span className="text">Admin</span></NavLink>}
-          <div className="nav-label">Courses</div>
+          {user.role === 'admin' && <NavLink to="/admin" className={link}><Icon name="shield" /><span className="text">Адмінка</span></NavLink>}
+          <div className="nav-label">Курси</div>
           {courses.map((course) => (
             <NavLink key={course.id} to={`/courses/${course.id}`} className={link}>
               <span className="dot" style={{ background: colorFor(course.id) }} />
@@ -99,16 +99,16 @@ function Shell({ user, setUser, logout }) {
             <Avatar name={user.name} />
             <span className="who">
               <strong>{user.name}</strong>
-              <span>{user.role}</span>
+              <span>{roleName(user.role)}</span>
             </span>
           </Link>
-          <button className="icon-btn" onClick={logout} aria-label="Log out" title="Log out"><Icon name="logout" /></button>
+          <button className="icon-btn" onClick={logout} aria-label="Вийти" title="Вийти"><Icon name="logout" /></button>
         </div>
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
       <div className="content">
         <header className="topbar">
-          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Icon name="menu" /></button>
+          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Відкрити меню"><Icon name="menu" /></button>
           <div className="mobile-brand"><Brand /></div>
           <SearchBox />
           <Notifications />
@@ -160,7 +160,7 @@ export default function App() {
     navigate('/')
   }
 
-  if (!ready) return <p className="center">Loading…</p>
+  if (!ready) return <p className="center">Завантаження…</p>
   if (!user) return <Login onLogin={setUser} />
 
   return (

@@ -17,14 +17,14 @@ export default function MaterialForm({ topicId, material, onSaved, onClose }) {
     event.preventDefault()
     setError('')
     if (kind === 'lab' && !deadline) {
-      setError('Pick a deadline for the lab')
+      setError('Оберіть дедлайн для лабораторної')
       return
     }
     const body = { title, kind, content, deadline: deadline || null, max_points: maxPoints }
     try {
       if (material) await api(`/materials/${material.id}`, { method: 'PUT', body })
       else await api(`/topics/${topicId}/materials`, { method: 'POST', body })
-      toast(material ? 'Material saved' : 'Material added')
+      toast(material ? 'Матеріал збережено' : 'Матеріал додано')
       onSaved()
       onClose()
     } catch (err) {
@@ -33,36 +33,36 @@ export default function MaterialForm({ topicId, material, onSaved, onClose }) {
   }
 
   return (
-    <Modal title={material ? 'Edit material' : 'Add a material'} onClose={onClose}>
+    <Modal title={material ? 'Редагувати матеріал' : 'Додати матеріал'} onClose={onClose}>
       <form onSubmit={save} className="stack">
         <div className="field">
-          <span className="label">Type</span>
-          <Segmented value={kind} onChange={setKind} options={[{ value: 'lecture', label: 'Lecture' }, { value: 'lab', label: 'Lab (graded)' }]} />
+          <span className="label">Тип</span>
+          <Segmented value={kind} onChange={setKind} options={[{ value: 'lecture', label: 'Лекція' }, { value: 'lab', label: 'Лабораторна (оцінювана)' }]} />
         </div>
         <label className="field">
-          <span className="label">Title</span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Lecture 4. Binary trees" autoFocus required />
+          <span className="label">Назва</span>
+          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="наприклад, Лекція 4. Бінарні дерева" autoFocus required />
         </label>
         <label className="field">
-          <span className="label">Text</span>
-          <textarea className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Lecture text or lab task" />
+          <span className="label">Текст</span>
+          <textarea className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Текст лекції або завдання лабораторної" />
         </label>
         {kind === 'lab' && (
           <>
             <div className="field">
-              <span className="label">Deadline</span>
+              <span className="label">Дедлайн</span>
               <DateTimeField value={deadline} onChange={setDeadline} />
             </div>
             <div className="field">
-              <span className="label">Max points</span>
+              <span className="label">Максимум балів</span>
               <Stepper value={maxPoints} onChange={(value) => setMaxPoints(value === '' ? 1 : value)} min={1} max={100} />
             </div>
           </>
         )}
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn">{material ? 'Save' : 'Add material'}</button>
+          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
+          <button type="submit" className="btn">{material ? 'Зберегти' : 'Додати матеріал'}</button>
         </div>
       </form>
     </Modal>

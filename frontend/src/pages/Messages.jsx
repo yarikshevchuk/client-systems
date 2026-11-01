@@ -13,21 +13,21 @@ function NewConversation({ onClose, onPick }) {
   }, [])
 
   return (
-    <Modal title="New message" onClose={onClose}>
+    <Modal title="Нове повідомлення" onClose={onClose}>
       {!contacts ? <Loading /> : (
         <div className="stack">
           <div className="field">
-            <span className="label">Who do you want to write to?</span>
+            <span className="label">Кому ви хочете написати?</span>
             <Select
               value={picked}
               onChange={setPicked}
-              placeholder="Choose a person"
-              options={contacts.map((contact) => ({ value: contact.id, label: `${contact.name} · ${contact.role === 'teacher' ? 'lecturer' : contact.role === 'admin' ? 'admin' : contact.grp}` }))}
+              placeholder="Оберіть людину"
+              options={contacts.map((contact) => ({ value: contact.id, label: `${contact.name} · ${contact.role === 'teacher' ? 'викладач' : contact.role === 'admin' ? 'адмін' : contact.grp}` }))}
             />
           </div>
           <div className="modal-foot">
-            <button className="btn secondary" onClick={onClose}>Cancel</button>
-            <button className="btn" disabled={!picked} onClick={() => onPick(picked)}>Start chat</button>
+            <button className="btn secondary" onClick={onClose}>Скасувати</button>
+            <button className="btn" disabled={!picked} onClick={() => onPick(picked)}>Почати чат</button>
           </div>
         </div>
       )}
@@ -89,19 +89,19 @@ export default function Messages({ user }) {
     <>
       <div className="page-head">
         <div>
-          <h1>Messages</h1>
-          <p>Private conversations with lecturers and classmates.</p>
+          <h1>Повідомлення</h1>
+          <p>Особисті розмови з викладачами та одногрупниками.</p>
         </div>
-        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />New message</button>
+        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Нове повідомлення</button>
       </div>
       <div className={otherId ? 'messages has-thread' : 'messages'}>
         <div className="card conv-list">
-          {!conversations ? <Loading /> : conversations.length === 0 ? <Empty icon="chat">No conversations yet.</Empty> : conversations.map((item) => (
+          {!conversations ? <Loading /> : conversations.length === 0 ? <Empty icon="chat">Розмов ще немає.</Empty> : conversations.map((item) => (
             <button key={item.user.id} className={Number(otherId) === item.user.id ? 'conv active' : 'conv'} onClick={() => navigate(`/messages/${item.user.id}`)}>
               <Avatar name={item.user.name} size={40} />
               <span className="grow">
                 <strong>{item.user.name}</strong>
-                <span className="muted small clip">{item.last.sender_id === user.id ? 'You: ' : ''}{item.last.text}</span>
+                <span className="muted small clip">{item.last.sender_id === user.id ? 'Ви: ' : ''}{item.last.text}</span>
               </span>
               <span className="meta">
                 <span className="muted small">{timeAgo(item.last.created_at)}</span>
@@ -112,19 +112,19 @@ export default function Messages({ user }) {
         </div>
         <div className="card thread-pane">
           {!otherId ? (
-            <Empty icon="chat">Choose a conversation or start a new one.</Empty>
+            <Empty icon="chat">Оберіть розмову або почніть нову.</Empty>
           ) : !thread ? <Loading /> : (
             <>
               <div className="thread-head">
-                <button className="icon-btn back" onClick={() => navigate('/messages')} aria-label="Back"><Icon name="left" /></button>
+                <button className="icon-btn back" onClick={() => navigate('/messages')} aria-label="Назад"><Icon name="left" /></button>
                 <Avatar name={thread.user.name} size={36} />
                 <div>
                   <strong>{thread.user.name}</strong>
-                  <div className="muted small">{thread.user.role === 'teacher' ? 'Lecturer' : thread.user.role}</div>
+                  <div className="muted small">{{ teacher: 'Викладач', student: 'Студент', admin: 'Адміністратор' }[thread.user.role]}</div>
                 </div>
               </div>
               <div className="chat tall">
-                {thread.messages.length === 0 && <Empty icon="chat">Write the first message.</Empty>}
+                {thread.messages.length === 0 && <Empty icon="chat">Напишіть перше повідомлення.</Empty>}
                 {thread.messages.map((message) => (
                   <div key={message.id} className={message.sender_id === user.id ? 'bubble-row mine' : 'bubble-row'}>
                     <div className="dm-bubble">
@@ -136,8 +136,8 @@ export default function Messages({ user }) {
                 <div ref={bottom} />
               </div>
               <form className="composer" onSubmit={send}>
-                <input className="input" placeholder="Write a message…" value={text} onChange={(e) => setText(e.target.value)} />
-                <button type="submit" className="btn" disabled={!text.trim()}><Icon name="send" size={16} />Send</button>
+                <input className="input" placeholder="Напишіть повідомлення…" value={text} onChange={(e) => setText(e.target.value)} />
+                <button type="submit" className="btn" disabled={!text.trim()}><Icon name="send" size={16} />Надіслати</button>
               </form>
             </>
           )}

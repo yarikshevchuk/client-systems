@@ -13,13 +13,14 @@ from auth import current_user
 
 router = APIRouter(prefix="/api")
 
-NOT_FOUND = "Not found in the course materials"
+NOT_FOUND = "Немає в матеріалах курсу"
 DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "30"))
 
 STOP_WORDS = {
     "the", "and", "for", "what", "how", "why", "when", "does", "this", "that", "with", "from", "are", "was",
     "about", "can", "you", "explain", "tell", "give", "show", "mean", "means", "which", "where", "who",
     "що", "таке", "як", "чому", "коли", "це", "для", "про", "або", "чи", "які", "який", "яка", "мені",
+    "розкажи", "поясни", "означає", "такі", "яке", "чим", "яких",
 }
 
 
@@ -69,7 +70,7 @@ def usage_today(user_id):
 
 def spend(user):
     if usage_today(user["id"]) >= DAILY_LIMIT:
-        raise HTTPException(429, f"Daily AI limit of {DAILY_LIMIT} requests is reached. Try again tomorrow")
+        raise HTTPException(429, f"Денний ліміт AI ({DAILY_LIMIT} запитів) вичерпано. Спробуйте завтра")
     db.execute(
         "insert into ai_usage (user_id, day, count) values (%s, %s, 1) "
         "on conflict (user_id, day) do update set count = ai_usage.count + 1", (user["id"], date.today()))
@@ -86,7 +87,9 @@ def find_sources(course_id, question):
         if score:
             scored.append((score, material))
     scored.sort(key=lambda pair: -pair[0])
-    return [material for _, material in scored[:2]]
+    ranked = [material for _, material in scored]
+    lectures = [material for material in ranked if material["kind"] == "lecture"]
+    return (lectures or ranked)[:2]
 
 
 def best_sentences(text, question, count):
@@ -103,7 +106,7 @@ def get_settings(course_id):
 def cloze_cards(content):
     cards = []
     for sentence in sentences(content):
-        candidates = [w for w in re.findall(r"[A-Za-z]{6,}", sentence) if w.lower() not in STOP_WORDS]
+        candidates = [w for w in re.findall(r"[^\W\d_]{6,}", sentence) if w.lower() not in STOP_WORDS]
         if not candidates:
             continue
         target = max(candidates, key=len)
@@ -134,20 +137,20 @@ def write_settings(course_id: int, body: SettingsIn, user=Depends(current_user))
 def summary(material_id: int, user=Depends(current_user)):
     material, course = get_material(material_id, user)
     if material["kind"] != "lecture":
-        raise HTTPException(400, "Summaries are available for lectures only")
+        raise HTTPException(400, "Конспекти доступні лише для лекцій")
     if not get_settings(course["id"])["summaries_on"]:
-        raise HTTPException(403, "AI summaries are turned off for this course by the lecturer")
+        raise HTTPException(403, "Викладач вимкнув AI-конспекти для цього курсу")
     cached = db.one("select text from ai_summaries where material_id = %s", (material_id,))
     if cached:
         return {"summary": cached["text"], "cached": True}
     spend(user)
     text = call_llm(
         "You summarize university lectures. Reply with 4 to 6 short bullet key points, one per line, "
-        "each starting with '- '. Use only the given lecture text.",
+        "each starting with '- '. Use only the given lecture text. Reply in Ukrainian.",
         material["title"] + "\n\n" + material["content"])
     demo = text is None
     if demo:
-        text = "\n".join("- " + s for s in sentences(material["content"])[:5]) or "- The lecture text is empty."
+        text = "\n".join("- " + s for s in sentences(material["content"])[:5]) or "- Текст лекції порожній."
     db.execute("insert into ai_summaries (material_id, text) values (%s, %s) on conflict do nothing", (material_id, text))
     return {"summary": text, "cached": False, "demo": demo}
 
@@ -156,7 +159,7 @@ def summary(material_id: int, user=Depends(current_user)):
 def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
     get_course(course_id, user)
     if not get_settings(course_id)["ask_on"]:
-        raise HTTPException(403, "The AI assistant is turned off for this course by the lecturer")
+        raise HTTPException(403, "Викладач вимкнув AI-помічника для цього курсу")
     sources = find_sources(course_id, body.question)
     if not sources:
         return {"found": False, "answer": NOT_FOUND, "sources": []}
@@ -165,12 +168,12 @@ def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
     context = "\n\n".join(f"[{s['title']}]\n{s['content']}" for s in sources)
     system = ("You are a course assistant. Answer only from the given course materials. If the answer is not "
               f"there, reply exactly: {NOT_FOUND}. Materials of kind lab are graded: never give a complete "
-              "solution, give hints and explain the theory.")
+              "solution, give hints and explain the theory. Reply in Ukrainian.")
     text = call_llm(system, f"Materials:\n{context}\n\nQuestion: {body.question}")
     demo = text is None
     if demo:
         picked = " ".join(best_sentences(sources[0]["content"], body.question, 2))
-        text = ("This task is graded, so I will not give a ready solution. Hints: " + picked) if graded else picked
+        text = ("Це оцінювана робота, тому я не даю готового розв'язку. Підказки: " + picked) if graded else picked
     if not text.strip():
         text = NOT_FOUND
     found = NOT_FOUND not in text
@@ -187,14 +190,14 @@ def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
 def generate_cards(material_id: int, user=Depends(current_user)):
     material, course = get_material(material_id, user)
     if material["kind"] != "lecture":
-        raise HTTPException(400, "Flashcards are made from lectures")
+        raise HTTPException(400, "Картки створюються з лекцій")
     if not get_settings(course["id"])["flashcards_on"]:
-        raise HTTPException(403, "AI flashcards are turned off for this course by the lecturer")
+        raise HTTPException(403, "Викладач вимкнув AI-картки для цього курсу")
     spend(user)
     cards = None
     text = call_llm(
         "Make 4 to 6 study flashcards from the lecture. Reply with JSON only: a list of objects with keys "
-        "front and back. Use only the given lecture text.", material["title"] + "\n\n" + material["content"])
+        "front and back. Use only the given lecture text. Write in Ukrainian.", material["title"] + "\n\n" + material["content"])
     if text:
         try:
             cards = [{"front": str(c["front"]), "back": str(c["back"])} for c in json.loads(text[text.index("["):text.rindex("]") + 1])]

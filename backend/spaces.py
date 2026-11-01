@@ -25,7 +25,7 @@ def get_space(space_id):
         "select s.*, u.name as owner, (select count(*) from space_members m where m.space_id = s.id) as members "
         "from spaces s join users u on u.id = s.owner_id where s.id = %s", (space_id,))
     if not space:
-        raise HTTPException(404, "Space not found")
+        raise HTTPException(404, "Простір не знайдено")
     return space
 
 
@@ -82,7 +82,7 @@ def join_space(space_id: int, user=Depends(current_user)):
 def leave_space(space_id: int, user=Depends(current_user)):
     space = get_space(space_id)
     if space["owner_id"] == user["id"]:
-        raise HTTPException(400, "The owner cannot leave the space. Delete it instead")
+        raise HTTPException(400, "Власник не може залишити простір. Видаліть його")
     db.execute("delete from space_members where space_id = %s and user_id = %s", (space_id, user["id"]))
     return {"joined": False}
 
@@ -91,7 +91,7 @@ def leave_space(space_id: int, user=Depends(current_user)):
 def delete_space(space_id: int, user=Depends(current_user)):
     space = get_space(space_id)
     if space["owner_id"] != user["id"] and user["role"] != "admin":
-        raise HTTPException(403, "Only the owner can delete this space")
+        raise HTTPException(403, "Видалити простір може лише власник")
     db.execute("delete from spaces where id = %s", (space_id,))
     return {"ok": True}
 
@@ -100,10 +100,10 @@ def delete_space(space_id: int, user=Depends(current_user)):
 async def post_space_message(space_id: int, body: SpaceMessageIn, user=Depends(current_user)):
     get_space(space_id)
     if not is_member(space_id, user["id"]):
-        raise HTTPException(403, "Join the space to write in it")
+        raise HTTPException(403, "Приєднайтеся до простору, щоб писати в ньому")
     text = body.text.strip()
     if not text:
-        raise HTTPException(422, "Message is empty")
+        raise HTTPException(422, "Повідомлення порожнє")
     message_id = db.insert(
         "insert into space_messages (space_id, user_id, text, created_at) values (%s, %s, %s, %s)",
         (space_id, user["id"], text, datetime.now()))

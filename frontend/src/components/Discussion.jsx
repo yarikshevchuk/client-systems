@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, timeAgo } from '../api.js'
+import { api, plural, timeAgo } from '../api.js'
 import { useLiveEvents } from '../live.jsx'
 import { Avatar, Empty, Icon, Loading, Menu, Segmented, useToast } from './ui.jsx'
 
@@ -23,7 +23,7 @@ function useMessages(courseId, channel) {
   return [messages, load]
 }
 
-function Composer({ placeholder, onSend, rows = 1, button = 'Send' }) {
+function Composer({ placeholder, onSend, rows = 1, button = 'Надіслати' }) {
   const [text, setText] = useState('')
 
   async function submit(event) {
@@ -78,13 +78,13 @@ function Thread({ question, replies, user, canManage, courseId, reload }) {
         <div className="grow">
           <div className="head">
             <strong>{question.author}</strong>
-            {question.role === 'teacher' && <span className="badge accent">Lecturer</span>}
+            {question.role === 'teacher' && <span className="badge accent">Викладач</span>}
             <span>{timeAgo(question.created_at)}</span>
-            {question.resolved ? <span className="badge ok"><Icon name="check" size={12} />Answered</span> : <span className="badge warn">Open</span>}
+            {question.resolved ? <span className="badge ok"><Icon name="check" size={12} />Є відповідь</span> : <span className="badge warn">Відкрите</span>}
           </div>
           <div className="body">{question.text}</div>
         </div>
-        {canDelete(question) && <Menu items={[{ label: 'Delete question', danger: true, onClick: () => call(`/messages/${question.id}`, { method: 'DELETE' }) }]} />}
+        {canDelete(question) && <Menu items={[{ label: 'Видалити питання', danger: true, onClick: () => call(`/messages/${question.id}`, { method: 'DELETE' }) }]} />}
       </div>
       {replies.length > 0 && (
         <div className="replies">
@@ -94,19 +94,19 @@ function Thread({ question, replies, user, canManage, courseId, reload }) {
               <div className="grow">
                 <div className="head">
                   <strong>{message.author}</strong>
-                  {message.role === 'teacher' && <span className="badge accent">Lecturer</span>}
+                  {message.role === 'teacher' && <span className="badge accent">Викладач</span>}
                   <span>{timeAgo(message.created_at)}</span>
-                  {message.accepted && <span className="badge ok"><Icon name="check" size={12} />Accepted answer</span>}
+                  {message.accepted && <span className="badge ok"><Icon name="check" size={12} />Прийнята відповідь</span>}
                 </div>
                 <div className="body">{message.text}</div>
               </div>
               <div className="row">
                 {canAccept && (
                   <button className="btn ghost sm" onClick={() => call(`/messages/${message.id}/accept`, { method: 'POST' })}>
-                    {message.accepted ? 'Unmark' : 'Accept'}
+                    {message.accepted ? 'Зняти позначку' : 'Прийняти'}
                   </button>
                 )}
-                {canDelete(message) && <Menu items={[{ label: 'Delete', danger: true, onClick: () => call(`/messages/${message.id}`, { method: 'DELETE' }) }]} />}
+                {canDelete(message) && <Menu items={[{ label: 'Видалити', danger: true, onClick: () => call(`/messages/${message.id}`, { method: 'DELETE' }) }]} />}
               </div>
             </div>
           ))}
@@ -114,10 +114,10 @@ function Thread({ question, replies, user, canManage, courseId, reload }) {
       )}
       {replying ? (
         <div style={{ marginTop: 12 }}>
-          <Composer placeholder="Write an answer…" button="Reply" onSend={reply} />
+          <Composer placeholder="Напишіть відповідь…" button="Відповісти" onSend={reply} />
         </div>
       ) : (
-        <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => setReplying(true)}><Icon name="chat" size={14} />Reply</button>
+        <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => setReplying(true)}><Icon name="chat" size={14} />Відповісти</button>
       )}
     </article>
   )
@@ -131,7 +131,7 @@ function Questions({ courseId, user, canManage }) {
   async function ask(text) {
     try {
       await api(`/courses/${courseId}/messages`, { method: 'POST', body: { channel: 'qa', text } })
-      toast('Question posted')
+      toast('Питання опубліковано')
       load()
     } catch (err) {
       toast(err.message, 'bad')
@@ -147,15 +147,15 @@ function Questions({ courseId, user, canManage }) {
       <div className="card">
         <div className="card-title">
           <span className="icon-wrap"><Icon name="help" size={16} /></span>
-          <h2>Ask a question</h2>
+          <h2>Поставити питання</h2>
         </div>
-        <Composer placeholder="What would you like to know?" rows={2} button="Post question" onSend={ask} />
+        <Composer placeholder="Що ви хочете дізнатися?" rows={2} button="Опублікувати питання" onSend={ask} />
       </div>
       <div className="row between wrap" style={{ margin: '20px 0 12px' }}>
-        <h2>{questions.length} {questions.length === 1 ? 'question' : 'questions'}</h2>
-        <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'All' }, { value: 'open', label: 'Open' }, { value: 'resolved', label: 'Answered' }]} />
+        <h2>{questions.length} {plural(questions.length, 'питання', 'питання', 'питань')}</h2>
+        <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Усі' }, { value: 'open', label: 'Відкриті' }, { value: 'resolved', label: 'З відповіддю' }]} />
       </div>
-      {shown.length === 0 && <Empty icon="chat">No questions here.</Empty>}
+      {shown.length === 0 && <Empty icon="chat">Тут немає питань.</Empty>}
       {shown.map((question) => (
         <Thread key={question.id} question={question} replies={messages.filter((m) => m.parent_id === question.id)} user={user} canManage={canManage} courseId={courseId} reload={load} />
       ))}
@@ -185,26 +185,26 @@ function General({ courseId, user, canManage }) {
   return (
     <div className="card">
       <div className="chat">
-        {messages.length === 0 && <Empty icon="chat">No messages yet. Say hello.</Empty>}
+        {messages.length === 0 && <Empty icon="chat">Повідомлень ще немає. Привітайтеся.</Empty>}
         {messages.map((message) => (
           <div key={message.id} className="msg">
             <Avatar name={message.author} />
             <div className="bubble">
               <div className="head">
                 <strong>{message.author}</strong>
-                {message.role === 'teacher' && <span className="badge accent">Lecturer</span>}
+                {message.role === 'teacher' && <span className="badge accent">Викладач</span>}
                 <span>{timeAgo(message.created_at)}</span>
               </div>
               <div className="body">{message.text}</div>
             </div>
             {(message.user_id === user.id || canManage) && (
-              <Menu items={[{ label: 'Delete', danger: true, onClick: async () => { await api(`/messages/${message.id}`, { method: 'DELETE' }); load() } }]} />
+              <Menu items={[{ label: 'Видалити', danger: true, onClick: async () => { await api(`/messages/${message.id}`, { method: 'DELETE' }); load() } }]} />
             )}
           </div>
         ))}
         <div ref={bottom} />
       </div>
-      <Composer placeholder="Write a message to the course…" onSend={send} />
+      <Composer placeholder="Напишіть повідомлення курсу…" onSend={send} />
     </div>
   )
 }
@@ -214,7 +214,7 @@ export default function Discussion({ courseId, user, canManage }) {
   return (
     <>
       <div style={{ marginBottom: 16 }}>
-        <Segmented value={channel} onChange={setChannel} options={[{ value: 'qa', label: 'Q&A' }, { value: 'general', label: 'General chat' }]} />
+        <Segmented value={channel} onChange={setChannel} options={[{ value: 'qa', label: 'Q&A' }, { value: 'general', label: 'Загальний чат' }]} />
       </div>
       {channel === 'qa' ? <Questions courseId={courseId} user={user} canManage={canManage} /> : <General courseId={courseId} user={user} canManage={canManage} />}
     </>

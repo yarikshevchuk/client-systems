@@ -52,18 +52,18 @@ export default function Notifications() {
 
   return (
     <div className="notifications" ref={ref}>
-      <button className="icon-btn bell" onClick={toggle} aria-label="Notifications">
+      <button className="icon-btn bell" onClick={toggle} aria-label="Сповіщення">
         <Icon name="bell" size={20} />
         {counters.notifications > 0 && <span className="dot-badge">{counters.notifications > 9 ? '9+' : counters.notifications}</span>}
       </button>
       {open && (
         <div className="panel">
           <div className="panel-head">
-            <strong>Notifications</strong>
-            <button className="link-btn small" onClick={markAll}>Mark all as read</button>
+            <strong>Сповіщення</strong>
+            <button className="link-btn small" onClick={markAll}>Позначити всі прочитаними</button>
           </div>
           <div className="panel-body">
-            {items.length === 0 && <p className="muted center-text">You are all caught up.</p>}
+            {items.length === 0 && <p className="muted center-text">Нових сповіщень немає.</p>}
             {items.map((item) => (
               <button key={item.id} className={item.read ? 'note' : 'note unread'} onClick={() => openItem(item)}>
                 <span className="icon-wrap"><Icon name={KIND_ICONS[item.kind] || 'bell'} size={16} /></span>

@@ -33,7 +33,7 @@ app = FastAPI(title="VNS", lifespan=lifespan)
 
 @app.get("/")
 def root():
-    return {"message": "This is the VNS API. The site is at http://localhost:5173, API docs at /docs"}
+    return {"message": "Це API платформи VNS. Сайт: http://localhost:5173, документація API: /docs"}
 
 
 for module in (auth, courses, submissions, announcements, discussion, dm, spaces, study, ai,

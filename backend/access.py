@@ -10,16 +10,16 @@ def can_manage(course, user):
 def get_course(course_id, user):
     course = db.one("select * from courses where id = %s", (course_id,))
     if not course:
-        raise HTTPException(404, "Course not found")
+        raise HTTPException(404, "Курс не знайдено")
     if can_manage(course, user) or (user["role"] == "student" and course["grp"] == user["grp"]):
         return course
-    raise HTTPException(403, "You do not have access to this course")
+    raise HTTPException(403, "У вас немає доступу до цього курсу")
 
 
 def manage_course(course_id, user):
     course = get_course(course_id, user)
     if not can_manage(course, user):
-        raise HTTPException(403, "You do not have access to this page")
+        raise HTTPException(403, "У вас немає доступу до цієї сторінки")
     return course
 
 
@@ -43,7 +43,7 @@ def get_material(material_id, user, manage=False):
         "select m.*, t.course_id, t.title as topic_title from materials m "
         "join topics t on t.id = m.topic_id where m.id = %s", (material_id,))
     if not material:
-        raise HTTPException(404, "Material not found")
+        raise HTTPException(404, "Матеріал не знайдено")
     course = manage_course(material["course_id"], user) if manage else get_course(material["course_id"], user)
     return material, course
 

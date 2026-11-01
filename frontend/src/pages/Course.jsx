@@ -21,20 +21,20 @@ function People({ courseId }) {
       <Avatar name={row.name} size={40} />
       <div className="grow">
         <strong>{row.name}</strong>
-        <span className="muted small">{role} · {row.last_seen ? `seen ${timeAgo(row.last_seen)}` : 'never logged in'}</span>
+        <span className="muted small">{role} · {row.last_seen ? `в мережі ${timeAgo(row.last_seen)}` : 'ще не входив(ла)'}</span>
       </div>
       <div className="side">
-        <button className="btn secondary sm" onClick={() => navigate(`/messages/${row.id}`)}><Icon name="chat" size={14} />Message</button>
+        <button className="btn secondary sm" onClick={() => navigate(`/messages/${row.id}`)}><Icon name="chat" size={14} />Написати</button>
       </div>
     </div>
   )
 
   return (
     <>
-      <h2 style={{ marginBottom: 12 }}>Lecturer</h2>
-      {person(data.teacher, 'Lecturer')}
-      <h2 style={{ margin: '24px 0 12px' }}>Students ({data.students.length})</h2>
-      {data.students.map((row) => person(row, `Group ${row.grp}`))}
+      <h2 style={{ marginBottom: 12 }}>Викладач</h2>
+      {person(data.teacher, 'Викладач')}
+      <h2 style={{ margin: '24px 0 12px' }}>Студенти ({data.students.length})</h2>
+      {data.students.map((row) => person(row, `Група ${row.grp}`))}
     </>
   )
 }
@@ -62,16 +62,16 @@ export default function Course({ user }) {
 
   const color = colorFor(data.course.id)
   const tabs = [
-    { value: 'content', label: 'Content', icon: 'layers' },
-    { value: 'announcements', label: 'Announcements', icon: 'megaphone' },
-    { value: 'discussion', label: 'Discussion', icon: 'chat' },
-    { value: 'people', label: 'People', icon: 'users' },
-    student ? { value: 'grades', label: 'Grades', icon: 'award' } : { value: 'gradebook', label: 'Gradebook', icon: 'award' },
+    { value: 'content', label: 'Матеріали', icon: 'layers' },
+    { value: 'announcements', label: 'Оголошення', icon: 'megaphone' },
+    { value: 'discussion', label: 'Обговорення', icon: 'chat' },
+    { value: 'people', label: 'Люди', icon: 'users' },
+    student ? { value: 'grades', label: 'Оцінки', icon: 'award' } : { value: 'gradebook', label: 'Журнал', icon: 'award' },
   ]
 
   return (
     <>
-      <Link to="/" className="crumb"><Icon name="left" size={16} />Dashboard</Link>
+      <Link to="/" className="crumb"><Icon name="left" size={16} />Головна</Link>
       <div className="course-head" style={{ '--stripe': color }}>
         <div>
           <h1>{data.course.title}</h1>
@@ -79,10 +79,10 @@ export default function Course({ user }) {
           <p className="row wrap" style={{ gap: 8, marginTop: 12 }}>
             <Avatar name={data.course.teacher} size={22} />
             <span>{data.course.teacher}</span>
-            <span className="badge">Group {data.course.grp}</span>
+            <span className="badge">Група {data.course.grp}</span>
           </p>
         </div>
-        {data.can_manage && <Link className="btn secondary" to={`/courses/${id}/settings`}><Icon name="sliders" size={16} />Course settings</Link>}
+        {data.can_manage && <Link className="btn secondary" to={`/courses/${id}/settings`}><Icon name="sliders" size={16} />Налаштування курсу</Link>}
       </div>
       <Tabs value={tab} onChange={(value) => setParams(value === 'content' ? {} : { tab: value })} options={tabs} />
       {tab === 'content' && <Content data={data} canManage={data.can_manage} student={student} reload={load} />}

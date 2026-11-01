@@ -57,7 +57,7 @@ def parse_deadline(kind, value):
     try:
         return datetime.fromisoformat(value)
     except ValueError:
-        raise HTTPException(422, "Wrong deadline format")
+        raise HTTPException(422, "Невірний формат дедлайну")
 
 
 @router.get("/courses")
@@ -123,7 +123,7 @@ def create_topic(course_id: int, body: TopicIn, user=Depends(current_user)):
 def get_topic(topic_id, user):
     topic = db.one("select * from topics where id = %s", (topic_id,))
     if not topic:
-        raise HTTPException(404, "Topic not found")
+        raise HTTPException(404, "Тему не знайдено")
     manage_course(topic["course_id"], user)
     return topic
 
@@ -217,7 +217,7 @@ def people(course_id: int, user=Depends(current_user)):
 def course_grades(course_id: int, user=Depends(current_user)):
     get_course(course_id, user)
     if user["role"] != "student":
-        raise HTTPException(403, "Grades are shown to students only")
+        raise HTTPException(403, "Оцінки показуються лише студентам")
     return course_progress(user["id"], course_id)
 
 

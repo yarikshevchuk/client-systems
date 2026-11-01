@@ -3,17 +3,17 @@ import { api, setToken } from '../api.js'
 import { Avatar, Icon, Segmented } from '../components/ui.jsx'
 
 const DEMO = [
-  { name: 'Andrii Melnyk', role: 'Student', email: 'andrii@vns.demo' },
-  { name: 'Maryna Shevchuk', role: 'Student · head of group', email: 'maryna@vns.demo' },
-  { name: 'Olena Kovalenko', role: 'Lecturer', email: 'olena@vns.demo' },
-  { name: 'Admin VNS', role: 'Administrator', email: 'admin@vns.demo' },
+  { name: 'Андрій Мельник', role: 'Студент', email: 'andrii@vns.demo' },
+  { name: 'Марина Шевчук', role: 'Студент · староста групи', email: 'maryna@vns.demo' },
+  { name: 'Олена Коваленко', role: 'Викладач', email: 'olena@vns.demo' },
+  { name: 'Адміністратор VNS', role: 'Адміністратор', email: 'admin@vns.demo' },
 ]
 
 const FEATURES = [
-  { icon: 'calendar', title: 'Deadlines in one place', text: 'See what is due, submit your work and read the lecturer\'s feedback in the same course.' },
-  { icon: 'award', title: 'An honest grade forecast', text: 'Earned points, result on graded work and the maximum you can still reach.' },
-  { icon: 'chat', title: 'Questions stay in the course', text: 'Q&A with accepted answers, announcements with read confirmation and direct messages.' },
-  { icon: 'sparkle', title: 'AI help, set by the lecturer', text: 'Summaries, flashcards and answers only from course materials, hints only for graded labs.' },
+  { icon: 'calendar', title: 'Усі дедлайни в одному місці', text: 'Бачте, що й коли здавати, здавайте роботи та читайте відгуки викладача в тому ж курсі.' },
+  { icon: 'award', title: 'Чесний прогноз оцінки', text: 'Зароблені бали, результат за оціненими роботами й максимум, який ще можна набрати.' },
+  { icon: 'chat', title: 'Запитання лишаються в курсі', text: 'Q&A з прийнятими відповідями, оголошення з підтвердженням прочитання та особисті повідомлення.' },
+  { icon: 'sparkle', title: 'AI-допомога за правилами викладача', text: 'Конспекти, картки й відповіді лише за матеріалами курсу, для оцінюваних лабораторних тільки підказки.' },
 ]
 
 export default function Login({ onLogin }) {
@@ -46,8 +46,8 @@ export default function Login({ onLogin }) {
           <span className="logo-mark">V</span>
           VNS
         </div>
-        <h1 style={{ marginTop: 40, maxWidth: 420 }}>Learning that stays organised.</h1>
-        <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>Courses, deadlines, questions and grades for students and lecturers.</p>
+        <h1 style={{ marginTop: 40, maxWidth: 420 }}>Навчання, у якому все під контролем.</h1>
+        <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>Курси, дедлайни, запитання й оцінки для студентів і викладачів.</p>
         <div className="features">
           {FEATURES.map((feature) => (
             <div className="feature" key={feature.title}>
@@ -66,44 +66,44 @@ export default function Login({ onLogin }) {
             <span className="logo-mark">V</span>
             VNS
           </div>
-          <h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
-          <p className="muted">{mode === 'login' ? 'Log in to continue to your courses.' : 'Join your group and your courses.'}</p>
+          <h1>{mode === 'login' ? 'З поверненням' : 'Створіть акаунт'}</h1>
+          <p className="muted">{mode === 'login' ? 'Увійдіть, щоб перейти до своїх курсів.' : 'Приєднайтеся до своєї групи та курсів.'}</p>
           <div style={{ marginTop: 18 }}>
-            <Segmented value={mode} onChange={setMode} options={[{ value: 'login', label: 'Log in' }, { value: 'register', label: 'Sign up' }]} />
+            <Segmented value={mode} onChange={setMode} options={[{ value: 'login', label: 'Вхід' }, { value: 'register', label: 'Реєстрація' }]} />
           </div>
           <form className="stack" style={{ marginTop: 18 }} onSubmit={submit}>
             {mode === 'register' && (
               <>
                 <label className="field">
-                  <span className="label">Full name</span>
-                  <input className="input" value={form.name} onChange={set('name')} placeholder="Andrii Melnyk" required />
+                  <span className="label">Повне ім'я</span>
+                  <input className="input" value={form.name} onChange={set('name')} placeholder="Андрій Мельник" required />
                 </label>
                 <div className="field">
-                  <span className="label">I am</span>
-                  <Segmented value={form.role} onChange={(role) => setForm({ ...form, role })} options={[{ value: 'student', label: 'a student' }, { value: 'teacher', label: 'a lecturer' }]} />
+                  <span className="label">Я</span>
+                  <Segmented value={form.role} onChange={(role) => setForm({ ...form, role })} options={[{ value: 'student', label: 'студент' }, { value: 'teacher', label: 'викладач' }]} />
                 </div>
                 {form.role === 'student' && (
                   <label className="field">
-                    <span className="label">Group</span>
-                    <input className="input" value={form.grp} onChange={set('grp')} placeholder="CS-21" required />
+                    <span className="label">Група</span>
+                    <input className="input" value={form.grp} onChange={set('grp')} placeholder="КН-21" required />
                   </label>
                 )}
               </>
             )}
             <label className="field">
-              <span className="label">Email</span>
+              <span className="label">Електронна пошта</span>
               <input className="input" value={form.email} onChange={set('email')} placeholder="name@university.edu" autoFocus />
             </label>
             <label className="field">
-              <span className="label">Password</span>
-              <input className="input" type="password" value={form.password} onChange={set('password')} placeholder={mode === 'login' ? 'Your password' : 'At least 4 characters'} />
+              <span className="label">Пароль</span>
+              <input className="input" type="password" value={form.password} onChange={set('password')} placeholder={mode === 'login' ? 'Ваш пароль' : 'Щонайменше 4 символи'} />
             </label>
             {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
-            <button className="btn block" type="submit">{mode === 'login' ? 'Log in' : 'Create account'}</button>
+            <button className="btn block" type="submit">{mode === 'login' ? 'Увійти' : 'Створити акаунт'}</button>
           </form>
           {mode === 'login' && (
             <>
-              <div className="divider">or try a demo account</div>
+              <div className="divider">або спробуйте демо-акаунт</div>
               <div className="profiles">
                 {DEMO.map((account) => (
                   <button key={account.email} className="profile" onClick={() => send('/login', { email: account.email, password: 'demo' })}>

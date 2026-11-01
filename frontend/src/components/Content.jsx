@@ -15,7 +15,7 @@ function TopicForm({ courseId, topic, onSaved, onClose }) {
     try {
       if (topic) await api(`/topics/${topic.id}`, { method: 'PUT', body: { title } })
       else await api(`/courses/${courseId}/topics`, { method: 'POST', body: { title } })
-      toast(topic ? 'Topic renamed' : 'Topic added')
+      toast(topic ? 'Тему перейменовано' : 'Тему додано')
       onSaved()
       onClose()
     } catch (err) {
@@ -24,16 +24,16 @@ function TopicForm({ courseId, topic, onSaved, onClose }) {
   }
 
   return (
-    <Modal title={topic ? 'Rename topic' : 'Add a topic'} onClose={onClose}>
+    <Modal title={topic ? 'Перейменувати тему' : 'Додати тему'} onClose={onClose}>
       <form onSubmit={save} className="stack">
         <label className="field">
-          <span className="label">Title</span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Trees" autoFocus required />
+          <span className="label">Назва</span>
+          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="наприклад, Дерева" autoFocus required />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn">{topic ? 'Save' : 'Add topic'}</button>
+          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
+          <button type="submit" className="btn">{topic ? 'Зберегти' : 'Додати тему'}</button>
         </div>
       </form>
     </Modal>
@@ -43,7 +43,7 @@ function TopicForm({ courseId, topic, onSaved, onClose }) {
 function Status({ material }) {
   if (material.kind !== 'lab') return null
   if (material.grade !== null && material.grade !== undefined) return <span className="badge ok">{material.grade} / {material.max_points}</span>
-  if (material.submission_id) return <span className="badge accent">Submitted</span>
+  if (material.submission_id) return <span className="badge accent">Здано</span>
   const due = relative(material.deadline)
   return due ? <span className={`badge ${due.tone}`}>{due.text}</span> : null
 }
@@ -67,31 +67,31 @@ export default function Content({ data, canManage, student, reload }) {
     <>
       {canManage && (
         <div className="row" style={{ marginBottom: 16 }}>
-          <button className="btn secondary" onClick={() => setDialog({ type: 'topic' })}><Icon name="plus" size={16} />Add topic</button>
+          <button className="btn secondary" onClick={() => setDialog({ type: 'topic' })}><Icon name="plus" size={16} />Додати тему</button>
         </div>
       )}
-      {data.topics.length === 0 && <Empty icon="layers">No topics yet.{canManage ? ' Add the first one.' : ''}</Empty>}
+      {data.topics.length === 0 && <Empty icon="layers">Тем ще немає.{canManage ? ' Додайте першу.' : ''}</Empty>}
       {data.topics.map((topic, index) => (
         <section className="topic" key={topic.id} style={index === 0 ? { marginTop: 0 } : undefined}>
           <div className="topic-title">
             <span className="num" style={{ background: color }}>{index + 1}</span>
-            <h2>{topic.title.replace(/^Topic \d+\.\s*/, '')}</h2>
+            <h2>{topic.title.replace(/^(Topic|Тема) \d+\.\s*/, '')}</h2>
             {canManage && (
               <div className="push">
                 <Menu
-                  label="Topic actions"
+                  label="Дії з темою"
                   items={[
-                    { label: 'Add material', onClick: () => setDialog({ type: 'material', topic }) },
-                    { label: 'Rename topic', onClick: () => setDialog({ type: 'topic', topic }) },
-                    index > 0 && { label: 'Move up', onClick: () => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'up' } }) },
-                    index < data.topics.length - 1 && { label: 'Move down', onClick: () => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'down' } }) },
-                    { label: 'Delete topic', danger: true, onClick: () => setDialog({ type: 'delete-topic', topic }) },
+                    { label: 'Додати матеріал', onClick: () => setDialog({ type: 'material', topic }) },
+                    { label: 'Перейменувати тему', onClick: () => setDialog({ type: 'topic', topic }) },
+                    index > 0 && { label: 'Перемістити вгору', onClick: () => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'up' } }) },
+                    index < data.topics.length - 1 && { label: 'Перемістити вниз', onClick: () => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'down' } }) },
+                    { label: 'Видалити тему', danger: true, onClick: () => setDialog({ type: 'delete-topic', topic }) },
                   ]}
                 />
               </div>
             )}
           </div>
-          {topic.materials.length === 0 && <p className="muted small">No materials yet.</p>}
+          {topic.materials.length === 0 && <p className="muted small">Матеріалів ще немає.</p>}
           {topic.materials.map((material) => (
             <div className="item" key={material.id}>
               <Link to={`/materials/${material.id}`} className="item-link">
@@ -101,7 +101,7 @@ export default function Content({ data, canManage, student, reload }) {
                 <div className="grow">
                   <strong>{material.title}</strong>
                   <span className="muted small">
-                    {material.kind === 'lab' ? `Lab · due ${fmt(material.deadline)} · ${material.max_points} points` : 'Lecture'}
+                    {material.kind === 'lab' ? `Лабораторна · до ${fmt(material.deadline)} · ${material.max_points} балів` : 'Лекція'}
                   </span>
                 </div>
               </Link>
@@ -109,10 +109,10 @@ export default function Content({ data, canManage, student, reload }) {
                 {student && <Status material={material} />}
                 {canManage && (
                   <Menu
-                    label="Material actions"
+                    label="Дії з матеріалом"
                     items={[
-                      { label: 'Edit', onClick: async () => setDialog({ type: 'material', topic, material: await api(`/materials/${material.id}`) }) },
-                      { label: 'Delete', danger: true, onClick: () => setDialog({ type: 'delete-material', material }) },
+                      { label: 'Редагувати', onClick: async () => setDialog({ type: 'material', topic, material: await api(`/materials/${material.id}`) }) },
+                      { label: 'Видалити', danger: true, onClick: () => setDialog({ type: 'delete-material', material }) },
                     ]}
                   />
                 )}
@@ -127,10 +127,10 @@ export default function Content({ data, canManage, student, reload }) {
         <MaterialForm topicId={dialog.topic.id} material={dialog.material || null} onSaved={reload} onClose={() => setDialog(null)} />
       )}
       {dialog && dialog.type === 'delete-topic' && (
-        <Confirm title="Delete topic" text={`Delete “${dialog.topic.title}” with all its materials, submissions and grades? This cannot be undone.`} onConfirm={() => call(`/topics/${dialog.topic.id}`, { method: 'DELETE' }, 'Topic deleted')} onClose={() => setDialog(null)} />
+        <Confirm title="Видалити тему" text={`Видалити «${dialog.topic.title}» разом з усіма матеріалами, здачами й оцінками? Цю дію не можна скасувати.`} onConfirm={() => call(`/topics/${dialog.topic.id}`, { method: 'DELETE' }, 'Тему видалено')} onClose={() => setDialog(null)} />
       )}
       {dialog && dialog.type === 'delete-material' && (
-        <Confirm title="Delete material" text={`Delete “${dialog.material.title}” with its submissions and grades? This cannot be undone.`} onConfirm={() => call(`/materials/${dialog.material.id}`, { method: 'DELETE' }, 'Material deleted')} onClose={() => setDialog(null)} />
+        <Confirm title="Видалити матеріал" text={`Видалити «${dialog.material.title}» разом зі здачами й оцінками? Цю дію не можна скасувати.`} onConfirm={() => call(`/materials/${dialog.material.id}`, { method: 'DELETE' }, 'Матеріал видалено')} onClose={() => setDialog(null)} />
       )}
     </>
   )
