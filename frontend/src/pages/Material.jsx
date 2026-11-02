@@ -4,7 +4,7 @@ import { api, download, fmt, relative, timeAgo } from '../api.js'
 import AiPanel from '../components/AiPanel.jsx'
 import MaterialForm from '../components/MaterialForm.jsx'
 import Notes from '../components/Notes.jsx'
-import { Avatar, Confirm, FileDrop, Icon, Loading, Menu, Modal, Stepper, useToast } from '../components/ui.jsx'
+import { Avatar, Confirm, FileDrop, Icon, Loading, Modal, Segmented, Stepper, useToast } from '../components/ui.jsx'
 
 const formatSize = (bytes) => (bytes > 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' МБ' : Math.max(1, Math.round(bytes / 1024)) + ' КБ')
 
@@ -246,6 +246,7 @@ export default function Material({ user }) {
   const [material, setMaterial] = useState(null)
   const [error, setError] = useState('')
   const [dialog, setDialog] = useState(null)
+  const [panel, setPanel] = useState('notes')
   const toast = useToast()
 
   function load() {
@@ -254,6 +255,7 @@ export default function Material({ user }) {
 
   useEffect(() => {
     setMaterial(null)
+    setPanel('notes')
     load()
   }, [id])
 
@@ -274,32 +276,46 @@ export default function Material({ user }) {
     }
   }
 
+  const panels = [{ value: 'notes', label: 'Нотатки' }, { value: 'ai', label: 'AI-помічник' }]
+  if (lab) panels.unshift({ value: 'ask', label: 'Питання' })
+
   return (
     <>
-      <Link to={`/courses/${material.course_id}`} className="crumb"><Icon name="left" size={16} />{material.course_title} · {material.topic_title}</Link>
-      <div className="page-head">
+      <Link to={`/courses/${material.course_id}`} className="crumb"><Icon name="left" size={16} />{material.course_title} / {material.topic_title}</Link>
+      <div className="title-row">
         <div>
           <h1>{material.title}</h1>
-          <p className="row wrap" style={{ gap: 8, marginTop: 10 }}>
-            <span className={lab ? 'badge accent' : 'badge'}>{lab ? 'Лабораторна' : 'Лекція'}</span>
-            {lab && <span className="badge"><Icon name="calendar" size={13} />{fmt(material.deadline)}</span>}
-            {lab && <span className="badge"><Icon name="award" size={13} />{material.max_points} балів</span>}
-            {due && <span className={`badge ${due.tone}`}>{due.text}</span>}
+          <p className="meta-line">
+            {lab ? 'Лабораторна' : 'Лекція'}
+            {lab && <> · до <b>{fmt(material.deadline)}</b> · {material.max_points} балів</>}
+            {due && !(student && material.submission) && <span className={`status-text ${due.tone === 'ok' ? '' : due.tone}`}> · {due.text}</span>}
           </p>
         </div>
         {material.can_manage && (
-          <Menu items={[{ label: 'Редагувати матеріал', onClick: () => setDialog('edit') }, { label: 'Видалити матеріал', danger: true, onClick: () => setDialog('delete') }]} />
+          <div className="row">
+            <button className="btn secondary sm" onClick={() => setDialog('edit')}><Icon name="edit" size={14} />Редагувати</button>
+            <button className="btn secondary sm" onClick={() => setDialog('delete')}><Icon name="trash" size={14} />Видалити</button>
+          </div>
         )}
       </div>
-      <div className="card">
-        <p className="reading">{material.content || 'Текст ще не додано.'}</p>
+      <div className={student ? 'material-layout' : ''}>
+        <div>
+          <div className="card">
+            <p className="reading">{material.content || 'Текст ще не додано.'}</p>
+          </div>
+          <div style={{ marginTop: 12 }}><Attachments material={material} canManage={material.can_manage} reload={load} /></div>
+          {lab && material.can_manage && <div style={{ marginTop: 12 }}><Submissions material={material} /></div>}
+        </div>
+        {student && (
+          <aside className="material-side">
+            {lab && <Upload material={material} onDone={load} />}
+            <Segmented value={panel} onChange={setPanel} options={panels} />
+            {panel === 'ask' && lab && <AskLecturer material={material} />}
+            {panel === 'notes' && <Notes key={material.id} materialId={material.id} initial={material.note} />}
+            {panel === 'ai' && <AiPanel material={material} ai={material.ai} />}
+          </aside>
+        )}
       </div>
-      <Attachments material={material} canManage={material.can_manage} reload={load} />
-      {lab && student && <Upload material={material} onDone={load} />}
-      {lab && student && <AskLecturer material={material} />}
-      {lab && material.can_manage && <Submissions material={material} />}
-      {student && <Notes key={material.id} materialId={material.id} initial={material.note} />}
-      {student && <AiPanel material={material} ai={material.ai} />}
       {dialog === 'edit' && <MaterialForm material={material} onSaved={load} onClose={() => setDialog(null)} />}
       {dialog === 'delete' && <Confirm title="Видалити матеріал" text={`Видалити «${material.title}» разом зі здачами й оцінками? Цю дію не можна скасувати.`} onConfirm={remove} onClose={() => setDialog(null)} />}
     </>

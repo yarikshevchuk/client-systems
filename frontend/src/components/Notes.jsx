@@ -13,6 +13,7 @@ export default function Notes({ materialId, initial }) {
       first.current = false
       return undefined
     }
+    if (text === initial) return undefined
     setState('Збереження…')
     clearTimeout(timer.current)
     timer.current = setTimeout(async () => {
@@ -20,7 +21,7 @@ export default function Notes({ materialId, initial }) {
       setState('Збережено')
     }, 700)
     return () => clearTimeout(timer.current)
-  }, [text, materialId])
+  }, [text, materialId, initial])
 
   return (
     <div className="card">

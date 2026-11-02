@@ -49,11 +49,6 @@ function NewCourse({ onClose, onCreated }) {
 
 function TeacherDashboard({ data, user, onChanged }) {
   const [adding, setAdding] = useState(false)
-  const groups = {}
-  data.courses.forEach((course) => {
-    groups[course.grp] = course.students
-  })
-  const students = Object.values(groups).reduce((sum, count) => sum + count, 0)
   const ungraded = data.courses.reduce((sum, course) => sum + course.ungraded, 0)
 
   return (
@@ -61,55 +56,49 @@ function TeacherDashboard({ data, user, onChanged }) {
       <div className="page-head">
         <div>
           <h1>Вітаємо, {user.name.split(' ')[0]}</h1>
-          <p>Ваші курси та роботи, які чекають на вас.</p>
+          <p>{ungraded === 0 ? 'Нових робіт на перевірку немає.' : `На перевірку: ${ungraded} ${plural(ungraded, 'робота', 'роботи', 'робіт')}.`}</p>
         </div>
         <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Новий курс</button>
       </div>
-      <div className="grid three">
-        <div className="card tile"><span className="icon-wrap"><Icon name="book" /></span><div><strong>{data.courses.length}</strong><span className="muted small">Курси</span></div></div>
-        <div className="card tile"><span className="icon-wrap"><Icon name="users" /></span><div><strong>{students}</strong><span className="muted small">Студенти</span></div></div>
-        <div className="card tile"><span className="icon-wrap"><Icon name="file" /></span><div><strong>{ungraded}</strong><span className="muted small">Чекають на оцінку</span></div></div>
-      </div>
-      {data.recent.length > 0 && (
-        <div className="section">
-          <div className="section-head"><h2>На перевірку</h2></div>
+      <div className="dash-layout">
+        <div>
+          <h2 style={{ marginBottom: 6 }}>Очікують перевірки</h2>
+          {data.recent.length === 0 && <Empty icon="check">Усе перевірено.</Empty>}
           {data.recent.map((row) => (
-            <Link to={`/materials/${row.material_id}`} className="item" key={row.id}>
-              <Avatar name={row.student} size={40} />
+            <Link to={`/materials/${row.material_id}`} className="todo-row" key={row.id}>
+              <Avatar name={row.student} size={32} />
               <div className="grow">
-                <strong>{row.student}</strong>
-                <span className="muted small">{row.title} · {row.course_title}</span>
+                <span className="todo-title">{row.student}</span>
+                <div className="muted small">{row.title} · {row.course_title}</div>
               </div>
-              <div className="side">
-                <span className="muted small">{timeAgo(row.submitted_at)}</span>
-                <Icon name="right" size={18} />
-              </div>
+              <span className="muted small">{timeAgo(row.submitted_at)}</span>
+              <span className="btn sm">Оцінити</span>
             </Link>
           ))}
         </div>
-      )}
-      <div className="section">
-        <div className="section-head"><h2>Ваші курси</h2></div>
-        {data.courses.length === 0 && <Empty icon="book">Курсів ще немає. Створіть перший.</Empty>}
-        <div className="grid two">
+        <aside className="side-list">
+          <h2>Мої курси</h2>
+          {data.courses.length === 0 && <p className="muted">Курсів ще немає.</p>}
           {data.courses.map((course) => (
-            <Link to={`/courses/${course.id}`} className="card course-card" key={course.id} style={{ '--stripe': colorFor(course.id) }}>
-              <h3>{course.title}</h3>
-              <div className="meta">
-                <span className="badge">Група {course.grp}</span>
-                <span>{course.students} {plural(course.students, 'студент', 'студенти', 'студентів')}</span>
-              </div>
-              <div className="row between">
-                {course.ungraded > 0 ? <span className="badge warn">{course.ungraded} на перевірку</span> : <span className="badge ok">Усе перевірено</span>}
-                <span className="row small muted">Відкрити <Icon name="right" size={16} /></span>
-              </div>
+            <Link to={`/courses/${course.id}`} className="side-row" key={course.id}>
+              <strong>{course.title}</strong>
+              <span className="muted small">Група {course.grp} · {course.students} {plural(course.students, 'студент', 'студенти', 'студентів')}{course.ungraded > 0 ? ` · на перевірку: ${course.ungraded}` : ''}</span>
             </Link>
           ))}
-        </div>
+        </aside>
       </div>
       {adding && <NewCourse onClose={() => setAdding(false)} onCreated={onChanged} />}
     </>
   )
+}
+
+function groupDeadlines(list) {
+  const week = new Date(Date.now() + 7 * 86400000)
+  return [
+    ['Прострочено', list.filter((d) => d.overdue), 'bad'],
+    ['Цього тижня', list.filter((d) => !d.overdue && new Date(d.deadline) <= week), 'warn'],
+    ['Пізніше', list.filter((d) => !d.overdue && new Date(d.deadline) > week), ''],
+  ].filter((group) => group[1].length > 0)
 }
 
 export default function Dashboard({ user, onCoursesChanged }) {
@@ -138,82 +127,65 @@ export default function Dashboard({ user, onCoursesChanged }) {
     )
   }
 
+  const groups = groupDeadlines(data.deadlines)
+
   return (
     <>
       <div className="page-head">
         <div>
           <h1>Вітаємо, {user.name.split(' ')[0]}</h1>
-          <p>
-            {data.deadlines.length === 0 ? 'Вам нічого здавати.' : `Попереду ${data.deadlines.length} ${plural(data.deadlines.length, 'дедлайн', 'дедлайни', 'дедлайнів')}.`}
-          </p>
+          <p>{data.deadlines.length === 0 ? 'Усе здано, справ немає.' : `Чекає здачі: ${data.deadlines.length} ${plural(data.deadlines.length, 'робота', 'роботи', 'робіт')}.`}</p>
         </div>
-        {data.due_cards > 0 && (
-          <Link to="/flashcards" className="btn secondary"><Icon name="cards" size={16} />Повторити {data.due_cards} {plural(data.due_cards, 'картку', 'картки', 'карток')}</Link>
-        )}
+        {data.due_cards > 0 && <Link to="/flashcards" className="btn secondary"><Icon name="cards" size={16} />Повторити {data.due_cards} {plural(data.due_cards, 'картку', 'картки', 'карток')}</Link>}
       </div>
-
-      <div className="section" style={{ marginTop: 0 }}>
-        <div className="section-head"><h2>Дедлайни</h2><Link to="/calendar" className="link-btn small">Відкрити календар</Link></div>
-        {data.deadlines.length === 0 && <Empty icon="check">Усе здано. Зараз нічого здавати.</Empty>}
-        {data.deadlines.map((item) => {
-          const due = relative(item.deadline)
-          return (
-            <Link to={`/materials/${item.id}`} className="item" key={item.id}>
-              <span className={`icon-wrap ${due.tone === 'ok' ? '' : due.tone}`}><Icon name="clock" size={20} /></span>
-              <div className="grow">
-                <strong>{item.title}</strong>
-                <span className="muted small">{item.course_title} · {fmt(item.deadline)} · {item.max_points} балів</span>
-              </div>
-              <div className="side">
-                <span className={`badge ${due.tone}`}>{due.text}</span>
-                <Icon name="right" size={18} />
-              </div>
-            </Link>
-          )
-        })}
-      </div>
-
-      {data.announcements.length > 0 && (
-        <div className="section">
-          <div className="section-head"><h2>Оголошення</h2></div>
-          {data.announcements.map((item) => (
-            <Link to={`/courses/${item.course_id}?tab=announcements`} className="item" key={item.id}>
-              <span className="icon-wrap accent"><Icon name="megaphone" size={20} /></span>
-              <div className="grow">
-                <strong>{item.title}</strong>
-                <span className="muted small">{item.course_title} · {timeAgo(item.created_at)}</span>
-              </div>
-              <div className="side">
-                {!item.read && <span className="badge accent">Нове</span>}
-                <Icon name="right" size={18} />
-              </div>
+      <div className="dash-layout">
+        <div>
+          <h2 style={{ marginBottom: 10 }}>Що потрібно зробити</h2>
+          {groups.length === 0 && <Empty icon="check">Усе здано. Зараз нічого робити.</Empty>}
+          {groups.map(([title, rows, tone]) => (
+            <section className="todo-group" key={title}>
+              <h3 className={`group-title ${tone}`}>{title} <span>· {rows.length}</span></h3>
+              {rows.map((row) => {
+                const due = relative(row.deadline)
+                return (
+                  <div className="todo-row" key={row.id}>
+                    <div className="grow">
+                      <Link to={`/materials/${row.id}`} className="todo-title">{row.title}</Link>
+                      <div className="muted small">{row.course_title} · до {fmt(row.deadline)} · {row.max_points} балів</div>
+                    </div>
+                    <span className={`status-text ${due.tone === 'ok' ? '' : due.tone}`}>{due.text}</span>
+                    <Link to={`/materials/${row.id}`} className="btn sm">Здати</Link>
+                  </div>
+                )
+              })}
+            </section>
+          ))}
+          {data.announcements.length > 0 && (
+            <section className="todo-group" style={{ marginTop: 28 }}>
+              <h3 className="group-title">Оголошення</h3>
+              {data.announcements.map((item) => (
+                <Link to={`/courses/${item.course_id}?tab=announcements`} className="todo-row" key={item.id}>
+                  <div className="grow">
+                    <span className="todo-title">{item.title}</span>
+                    <div className="muted small">{item.course_title} · {timeAgo(item.created_at)}</div>
+                  </div>
+                  {!item.read && <span className="status-text accent">Нове</span>}
+                </Link>
+              ))}
+            </section>
+          )}
+        </div>
+        <aside className="side-list">
+          <h2>Мої курси</h2>
+          {data.courses.map((course) => (
+            <Link to={`/courses/${course.id}`} className="side-row" key={course.id}>
+              <strong>{course.title}</strong>
+              <span className="muted small">{course.teacher}</span>
+              <div style={{ margin: '6px 0 2px' }}><ProgressBar percent={course.total_max ? (100 * course.earned) / course.total_max : 0} color={colorFor(course.id)} /></div>
+              <span className="muted small">{course.earned} із {course.total_max} балів{course.percent_graded === null ? '' : ` · ${course.percent_graded}% за оціненими`}</span>
             </Link>
           ))}
-        </div>
-      )}
-
-      <div className="section">
-        <div className="section-head"><h2>Мій прогрес</h2></div>
-        <div className="grid two">
-          {data.courses.map((course) => {
-            const color = colorFor(course.id)
-            return (
-              <Link to={`/courses/${course.id}`} className="card course-card" key={course.id} style={{ '--stripe': color }}>
-                <h3>{course.title}</h3>
-                <div className="meta">
-                  <Avatar name={course.teacher} size={22} />
-                  <span>{course.teacher}</span>
-                </div>
-                <ProgressBar percent={course.total_max ? (100 * course.earned) / course.total_max : 0} color={color} />
-                <dl className="stats" style={{ margin: '14px 0 0' }}>
-                  <div className="stat"><dt>Зароблено</dt><dd>{course.earned}</dd></div>
-                  <div className="stat"><dt>За оціненими</dt><dd>{course.percent_graded === null ? '—' : `${course.percent_graded}%`}</dd></div>
-                  <div className="stat"><dt>Максимум</dt><dd>{course.total_max}</dd></div>
-                </dl>
-              </Link>
-            )
-          })}
-        </div>
+        </aside>
       </div>
     </>
   )

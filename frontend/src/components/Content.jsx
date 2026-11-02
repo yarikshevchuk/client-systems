@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, fmt, relative } from '../api.js'
-import { colorFor, Confirm, Empty, Icon, Menu, Modal, useToast } from './ui.jsx'
+import { Confirm, Empty, Icon, Modal, useToast } from './ui.jsx'
 import MaterialForm from './MaterialForm.jsx'
 
 function TopicForm({ courseId, topic, onSaved, onClose }) {
@@ -42,16 +42,16 @@ function TopicForm({ courseId, topic, onSaved, onClose }) {
 
 function Status({ material }) {
   if (material.kind !== 'lab') return null
-  if (material.grade !== null && material.grade !== undefined) return <span className="badge ok">{material.grade} / {material.max_points}</span>
-  if (material.submission_id) return <span className="badge accent">Здано</span>
+  if (material.grade !== null && material.grade !== undefined) return <span className="status-text ok">{material.grade} / {material.max_points}</span>
+  if (material.submission_id) return <span className="status-text accent">Здано</span>
   const due = relative(material.deadline)
-  return due ? <span className={`badge ${due.tone}`}>{due.text}</span> : null
+  return due ? <span className={`status-text ${due.tone === 'ok' ? '' : due.tone}`}>{due.text}</span> : null
 }
 
 export default function Content({ data, canManage, student, reload }) {
   const [dialog, setDialog] = useState(null)
+  const [editing, setEditing] = useState(false)
   const toast = useToast()
-  const color = colorFor(data.course.id)
 
   async function call(path, options, message) {
     try {
@@ -65,62 +65,56 @@ export default function Content({ data, canManage, student, reload }) {
 
   return (
     <>
-      {canManage && (
-        <div className="row" style={{ marginBottom: 16 }}>
-          <button className="btn secondary" onClick={() => setDialog({ type: 'topic' })}><Icon name="plus" size={16} />Додати тему</button>
-        </div>
-      )}
-      {data.topics.length === 0 && <Empty icon="layers">Тем ще немає.{canManage ? ' Додайте першу.' : ''}</Empty>}
+      <div className="section-bar">
+        <h2>Матеріали курсу</h2>
+        {canManage && (
+          <button className={editing ? 'btn sm' : 'btn secondary sm'} onClick={() => setEditing(!editing)}>
+            <Icon name={editing ? 'check' : 'edit'} size={14} />{editing ? 'Готово' : 'Редагувати вміст'}
+          </button>
+        )}
+      </div>
+      {data.topics.length === 0 && <Empty icon="layers">Тем ще немає.{canManage ? ' Натисніть «Редагувати вміст» і додайте першу.' : ''}</Empty>}
       {data.topics.map((topic, index) => (
-        <section className="topic" key={topic.id} style={index === 0 ? { marginTop: 0 } : undefined}>
+        <section className="topic" key={topic.id} style={index === 0 ? { marginTop: 8 } : undefined}>
           <div className="topic-title">
-            <span className="num" style={{ background: color }}>{index + 1}</span>
+            <span className="num" style={{ background: 'var(--ink)' }}>{index + 1}</span>
             <h2>{topic.title.replace(/^(Topic|Тема) \d+\.\s*/, '')}</h2>
-            {canManage && (
-              <div className="push">
-                <Menu
-                  label="Дії з темою"
-                  items={[
-                    { label: 'Додати матеріал', onClick: () => setDialog({ type: 'material', topic }) },
-                    { label: 'Перейменувати тему', onClick: () => setDialog({ type: 'topic', topic }) },
-                    index > 0 && { label: 'Перемістити вгору', onClick: () => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'up' } }) },
-                    index < data.topics.length - 1 && { label: 'Перемістити вниз', onClick: () => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'down' } }) },
-                    { label: 'Видалити тему', danger: true, onClick: () => setDialog({ type: 'delete-topic', topic }) },
-                  ]}
-                />
+            {editing && (
+              <div className="row-actions push">
+                <button className="icon-btn" title="Перейменувати тему" onClick={() => setDialog({ type: 'topic', topic })}><Icon name="edit" size={15} /></button>
+                {index > 0 && <button className="icon-btn" title="Вгору" onClick={() => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'up' } })}><Icon name="up" size={15} /></button>}
+                {index < data.topics.length - 1 && <button className="icon-btn" title="Вниз" onClick={() => call(`/topics/${topic.id}/move`, { method: 'POST', body: { direction: 'down' } })}><Icon name="down" size={15} /></button>}
+                <button className="icon-btn" title="Видалити тему" onClick={() => setDialog({ type: 'delete-topic', topic })}><Icon name="trash" size={15} /></button>
               </div>
             )}
           </div>
-          {topic.materials.length === 0 && <p className="muted small">Матеріалів ще немає.</p>}
+          {topic.materials.length === 0 && !editing && <p className="muted small">Матеріалів ще немає.</p>}
           {topic.materials.map((material) => (
             <div className="item" key={material.id}>
               <Link to={`/materials/${material.id}`} className="item-link">
                 <span className={material.kind === 'lab' ? 'icon-wrap accent' : 'icon-wrap'}>
-                  <Icon name={material.kind === 'lab' ? 'file' : 'book'} size={20} />
+                  <Icon name={material.kind === 'lab' ? 'file' : 'book'} size={18} />
                 </span>
                 <div className="grow">
                   <strong>{material.title}</strong>
-                  <span className="muted small">
-                    {material.kind === 'lab' ? `Лабораторна · до ${fmt(material.deadline)} · ${material.max_points} балів` : 'Лекція'}
-                  </span>
+                  {material.kind === 'lab' && <span className="muted small">До {fmt(material.deadline)} · {material.max_points} балів</span>}
                 </div>
               </Link>
               <div className="side">
                 {student && <Status material={material} />}
-                {canManage && (
-                  <Menu
-                    label="Дії з матеріалом"
-                    items={[
-                      { label: 'Редагувати', onClick: async () => setDialog({ type: 'material', topic, material: await api(`/materials/${material.id}`) }) },
-                      { label: 'Видалити', danger: true, onClick: () => setDialog({ type: 'delete-material', material }) },
-                    ]}
-                  />
+                {editing && (
+                  <div className="row-actions">
+                    <button className="icon-btn" title="Редагувати" onClick={async () => setDialog({ type: 'material', topic, material: await api(`/materials/${material.id}`) })}><Icon name="edit" size={15} /></button>
+                    <button className="icon-btn" title="Видалити" onClick={() => setDialog({ type: 'delete-material', material })}><Icon name="trash" size={15} /></button>
+                  </div>
                 )}
               </div>
             </div>
           ))}
+          {editing && <button className="add-row" onClick={() => setDialog({ type: 'material', topic })}>+ Додати матеріал у цю тему</button>}
         </section>
       ))}
+      {editing && <button className="add-row" style={{ marginTop: 20 }} onClick={() => setDialog({ type: 'topic' })}>+ Додати тему</button>}
 
       {dialog && dialog.type === 'topic' && <TopicForm courseId={data.course.id} topic={dialog.topic} onSaved={reload} onClose={() => setDialog(null)} />}
       {dialog && dialog.type === 'material' && (
