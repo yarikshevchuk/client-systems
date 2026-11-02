@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 import admin
+import agent
 import ai
 import announcements
 import auth
@@ -12,6 +13,7 @@ import discussion
 import dm
 import live
 import notifications
+import recordings
 import schedule
 import search
 import seed
@@ -36,6 +38,6 @@ def root():
     return {"message": "Це API платформи VNS. Сайт: http://localhost:5173, документація API: /docs"}
 
 
-for module in (auth, courses, submissions, announcements, discussion, dm, spaces, study, ai,
+for module in (auth, courses, submissions, announcements, discussion, dm, spaces, study, ai, agent, recordings,
                notifications, schedule, search, admin, live):
     app.include_router(module.router)

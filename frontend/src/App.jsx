@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { api, getToken, roleName, setToken } from './api.js'
 import { Avatar, colorFor, Icon, Loading } from './components/ui.jsx'
+import AgentDrawer from './components/AgentDrawer.jsx'
+import { AgentProvider } from './agent.jsx'
 import Notifications from './components/Notifications.jsx'
 import { LiveProvider, useLive } from './live.jsx'
 import Login from './pages/Login.jsx'
@@ -134,6 +136,7 @@ function Shell({ user, setUser, logout }) {
           </Suspense>
         </main>
       </div>
+      <AgentDrawer />
     </div>
   )
 }
@@ -165,7 +168,9 @@ export default function App() {
 
   return (
     <LiveProvider user={user}>
-      <Shell user={user} setUser={setUser} logout={logout} />
+      <AgentProvider>
+        <Shell user={user} setUser={setUser} logout={logout} />
+      </AgentProvider>
     </LiveProvider>
   )
 }

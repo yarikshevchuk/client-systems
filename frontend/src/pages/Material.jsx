@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, download, fmt, fmtShort, relative, timeAgo } from '../api.js'
 import AiPanel from '../components/AiPanel.jsx'
 import MaterialForm from '../components/MaterialForm.jsx'
+import Recordings from '../components/Recordings.jsx'
+import { useAgentContext } from '../agent.jsx'
 import Notes from '../components/Notes.jsx'
 import { Avatar, Confirm, FileDrop, Icon, Loading, Modal, Segmented, Stepper, useToast } from '../components/ui.jsx'
 
@@ -242,6 +244,50 @@ function AskLecturer({ material }) {
   )
 }
 
+function LectureSummary({ material }) {
+  const [summary, setSummary] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    setSummary(null)
+    api(`/materials/${material.id}/summary`).then((data) => data.summary && setSummary({ summary: data.summary, cached: true }))
+  }, [material.id, material.content])
+
+  async function make() {
+    setBusy(true)
+    setError('')
+    try {
+      setSummary(await api(`/materials/${material.id}/summary`, { method: 'POST' }))
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className="card ai-card">
+      <div className="card-title">
+        <span className="icon-wrap"><Icon name="sparkle" size={16} /></span>
+        <h2>AI-конспект</h2>
+        {material.ai.summaries_on && <button className="btn sm push" onClick={make} disabled={busy}>{busy ? 'Складаємо…' : summary ? 'Оновити' : 'Скласти конспект'}</button>}
+      </div>
+      {!material.ai.summaries_on && <p className="muted small">Викладач вимкнув AI-конспекти для цього курсу.</p>}
+      {material.ai.summaries_on && !summary && !error && <p className="muted small">Короткі ключові думки лекції в один клік.</p>}
+      {error && <p className="error">{error}</p>}
+      {summary && (
+        <div className="ai-result">
+          <div className="row wrap" style={{ gap: 6 }}>
+            <span className="badge accent">Згенеровано AI</span>
+            {summary.demo && <span className="badge">демо-режим</span>}
+          </div>
+          <ul>{summary.summary.split('\n').map((line, index) => <li key={index}>{line.replace(/^[-•*]\s*/, '')}</li>)}</ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Material({ user }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -250,6 +296,8 @@ export default function Material({ user }) {
   const [dialog, setDialog] = useState(null)
   const [panel, setPanel] = useState(null)
   const toast = useToast()
+
+  useAgentContext(material && material.course_id, material && material.id)
 
   function load() {
     api(`/materials/${id}`).then(setMaterial).catch((err) => setError(err.message))
@@ -278,7 +326,7 @@ export default function Material({ user }) {
     }
   }
 
-  const panels = [{ value: 'notes', label: 'Нотатки' }, { value: 'ai', label: 'AI-помічник' }]
+  const panels = [{ value: 'notes', label: 'Нотатки' }, { value: 'ai', label: 'Питання до AI' }]
   if (lab) panels.unshift({ value: 'ask', label: 'Питання' })
 
   return (
@@ -304,9 +352,11 @@ export default function Material({ user }) {
       </div>
       <div className={student ? 'material-layout' : ''}>
         <div>
+          {!lab && <div style={{ marginBottom: 12 }}><LectureSummary material={material} /></div>}
           <div className="card">
             <p className="reading">{material.content || 'Текст ще не додано.'}</p>
           </div>
+          {!lab && <div style={{ marginTop: 12 }}><Recordings material={material} user={user} onAppended={load} /></div>}
           <div style={{ marginTop: 12 }}><Attachments material={material} canManage={material.can_manage} reload={load} /></div>
           {lab && material.can_manage && <div style={{ marginTop: 12 }}><Submissions material={material} /></div>}
         </div>

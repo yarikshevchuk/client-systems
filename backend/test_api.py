@@ -368,3 +368,92 @@ def test_live_events(client):
     with pytest.raises(Exception):
         with client.websocket_connect("/ws?token=bad"):
             pass
+
+
+def wav(seconds=2):
+    import io
+    import wave
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(1)
+        audio.setframerate(2000)
+        audio.writeframes(b"\x80" * (2000 * seconds))
+    return buffer.getvalue()
+
+
+def test_recordings(client):
+    import json
+    student = login(client, "andrii@vns.demo")
+    classmate = login(client, "maryna@vns.demo")
+    teacher = login(client, "olena@vns.demo")
+    cid = course_id(client, student, "Алгоритми та структури даних")
+    lecture = material_id(client, student, cid, "Лекція 3. Графи: BFS і DFS")
+    lab = material_id(client, student, cid, "Лабораторна 3. Графи: BFS і DFS")
+    seeded = get(client, student, f"/api/materials/{lecture}/recordings")
+    assert len(seeded) == 1 and seeded[0]["shared"] is True and len(seeded[0]["segments"]) == 10
+    segments = json.dumps([{"start": 3, "text": "Другий рядок"}, {"start": 0.5, "text": "Перший рядок"}, {"start": 9, "text": "  "}])
+    mine = client.post(f"/api/materials/{lecture}/recordings", headers=student, data={"title": "Мій запис", "duration": "12", "segments": segments},
+                       files={"audio": ("rec.wav", wav(), "audio/wav")})
+    assert mine.status_code == 200 and mine.json()["shared"] is False
+    assert [s["text"] for s in mine.json()["segments"]] == ["Перший рядок", "Другий рядок"]
+    assert len(get(client, student, f"/api/materials/{lecture}/recordings")) == 2
+    assert len(get(client, classmate, f"/api/materials/{lecture}/recordings")) == 1
+    assert len(get(client, teacher, f"/api/materials/{lecture}/recordings")) == 2
+    rid = mine.json()["id"]
+    assert client.get(f"/api/recordings/{rid}/audio", headers=student).content == wav()
+    assert client.get(f"/api/recordings/{rid}/audio", headers=classmate).status_code == 403
+    assert client.get(f"/api/recordings/{seeded[0]['id']}/audio", headers=classmate).headers["content-type"] == "audio/wav"
+    assert client.post(f"/api/materials/{lab}/recordings", headers=student, data={"segments": "[]"}, files={"audio": ("a.wav", wav(), "audio/wav")}).status_code == 400
+    assert client.post(f"/api/materials/{lecture}/recordings", headers=student, data={"segments": "oops"}, files={"audio": ("a.wav", wav(), "audio/wav")}).status_code == 422
+    assert client.post(f"/api/materials/{lecture}/recordings", headers=student, data={"segments": "[]"}, files={"audio": ("a.wav", b"", "audio/wav")}).status_code == 422
+    shared_id = seeded[0]["id"]
+    assert client.delete(f"/api/recordings/{shared_id}", headers=classmate).status_code == 403
+    first = client.post(f"/api/recordings/{shared_id}/summary", headers=student).json()
+    second = client.post(f"/api/recordings/{shared_id}/summary", headers=student).json()
+    assert first["cached"] is False and second["cached"] is True and first["summary"].startswith("- ")
+    assert client.post(f"/api/recordings/{shared_id}/append", headers=student).status_code == 403
+    before = get(client, teacher, f"/api/materials/{lecture}")["content"]
+    appended = client.post(f"/api/recordings/{shared_id}/append", headers=teacher).json()["content"]
+    assert appended.startswith(before) and "Дякую за увагу" in appended
+    found = client.post(f"/api/courses/{cid}/ask", headers=student, json={"question": "Що таке BFS?"}).json()
+    assert any(s["title"].startswith("Запис") for s in found["sources"])
+    assert client.delete(f"/api/recordings/{rid}", headers=teacher).status_code == 200
+    assert client.delete(f"/api/recordings/{shared_id}", headers=teacher).status_code == 200
+    assert get(client, student, f"/api/materials/{lecture}/recordings") == []
+
+
+def talk(client, headers, cid, message, material=None):
+    response = client.post(f"/api/courses/{cid}/agent", headers=headers, json={"message": message, "material_id": material})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_agent(client):
+    student = login(client, "andrii@vns.demo")
+    cid = course_id(client, student, "Алгоритми та структури даних")
+    lecture1 = material_id(client, student, cid, "Лекція 1. Складність алгоритмів")
+    lecture3 = material_id(client, student, cid, "Лекція 3. Графи: BFS і DFS")
+    assert get(client, student, f"/api/courses/{cid}/agent") == []
+    deadlines = talk(client, student, cid, "Які в мене дедлайни?")
+    assert "Лабораторна 3" in deadlines["text"] and deadlines["sources"][0]["title"].startswith("Лабораторна 3")
+    assert "8 балів із 30" in talk(client, student, cid, "Яка в мене оцінка?")["text"]
+    summary = talk(client, student, cid, "Зроби конспект", lecture3)
+    assert summary["text"].startswith("Ключові думки") and summary["sources"][0]["id"] == lecture3
+    quiz = talk(client, student, cid, "Перевір мене тестом", lecture1)["extra"]["quiz"]
+    assert len(quiz) >= 2 and all(item["options"][item["answer"]] and "_____" in item["question"] for item in quiz)
+    before = get(client, student, "/api/flashcards")["due"]
+    assert "Додав карток" in talk(client, student, cid, "Зроби картки", lecture3)["text"]
+    assert get(client, student, "/api/flashcards")["due"] > before
+    answer = talk(client, student, cid, "Що таке BFS?")
+    assert answer["sources"] and "черг" in answer["text"].lower()
+    assert talk(client, student, cid, "Як приготувати борщ")["text"] == "Немає в матеріалах курсу"
+    databases = course_id(client, student, "Бази даних")
+    off = talk(client, student, databases, "Що таке первинний ключ?")
+    assert "вимкнув" in off["text"] and off["extra"]["error"] is True
+    assert client.post(f"/api/courses/{databases}/agent", headers=student, json={"message": "hi", "material_id": lecture3}).status_code == 400
+    history = get(client, student, f"/api/courses/{cid}/agent")
+    assert len(history) == 14 and history[0]["role"] == "user" and history[1]["role"] == "assistant"
+    assert client.delete(f"/api/courses/{cid}/agent", headers=student).status_code == 200
+    assert get(client, student, f"/api/courses/{cid}/agent") == []
+    assert client.get(f"/api/courses/{cid}/agent", headers=login(client, "yulia@vns.demo")).status_code == 403

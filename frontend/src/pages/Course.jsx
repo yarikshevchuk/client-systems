@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAgent, useAgentContext } from '../agent.jsx'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, timeAgo } from '../api.js'
 import Announcements from '../components/Announcements.jsx'
@@ -46,6 +47,9 @@ export default function Course({ user }) {
   const [error, setError] = useState('')
   const tab = params.get('tab') || 'content'
   const student = user.role === 'student'
+  const { setOpen } = useAgent()
+
+  useAgentContext(Number(id), null)
 
   function load() {
     api(`/courses/${id}`).then(setData).catch((err) => setError(err.message))
@@ -80,6 +84,7 @@ export default function Course({ user }) {
           {items.map(([value, label]) => (
             <button key={value} className={tab === value ? 'active' : ''} onClick={() => setParams(value === 'content' ? {} : { tab: value })}>{label}</button>
           ))}
+          <button onClick={() => setOpen(true)}>AI-помічник</button>
           {data.can_manage && <Link to={`/courses/${id}/settings`}>Налаштування курсу</Link>}
         </nav>
         <div>

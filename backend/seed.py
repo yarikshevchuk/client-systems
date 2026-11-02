@@ -1,4 +1,7 @@
+import io
+import json
 import uuid
+import wave
 from datetime import datetime, timedelta
 
 import db
@@ -93,6 +96,30 @@ def write_file(text):
     return stored
 
 
+def silence_wav(seconds):
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(8000)
+        audio.writeframes(bytes(2 * 8000 * seconds))
+    return buffer.getvalue()
+
+
+LECTURE3_TRANSCRIPT = [
+    (0, "Добрий день. Сьогодні ми поговоримо про графи та два базові алгоритми обходу."),
+    (6, "Граф складається з вершин, з'єднаних ребрами."),
+    (13, "Його можна зберігати у вигляді списку суміжності або матриці суміжності."),
+    (21, "Перший алгоритм — пошук у ширину, або BFS."),
+    (28, "Він відвідує вершини рівень за рівнем і використовує чергу."),
+    (36, "Тому BFS знаходить найкоротший шлях у графі без ваг."),
+    (44, "Другий алгоритм — пошук у глибину, або DFS."),
+    (51, "Він іде якомога глибше вздовж гілки, використовує стек або рекурсію, а потім повертається назад."),
+    (59, "Обидва алгоритми працюють за час O(V + E), бо відвідують кожну вершину й ребро один раз."),
+    (67, "У лабораторній вам потрібно реалізувати обидва алгоритми. Дякую за увагу."),
+]
+
+
 def seed():
     password = hash_password(DEMO_PASSWORD)
     now = datetime.now()
@@ -184,6 +211,14 @@ def seed():
     db.insert(
         "insert into attachments (material_id, filename, stored_name, size, uploaded_at) values (%s, %s, %s, %s, %s)",
         (lecture1, "lecture1_slides.pdf", stored, 48 * 1024, at(-39)))
+
+    stored_audio = uuid.uuid4().hex
+    (db.UPLOADS / stored_audio).write_bytes(silence_wav(75))
+    db.insert(
+        "insert into recordings (material_id, author_id, title, stored_name, mime, duration, segments, shared, created_at) "
+        "values (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)",
+        (lecture3, olena, "Запис лекції 3 (демо, без звуку)", stored_audio, "audio/wav", 75,
+         json.dumps([{"start": start, "text": text} for start, text in LECTURE3_TRANSCRIPT]), True, at(-5)))
 
     submit(lab1, andrii, 8, "Добрі вимірювання. Поясніть графік бінарного пошуку докладніше.")
     submit(lab1, maryna, 10, "Чудова робота.")

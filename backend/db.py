@@ -160,6 +160,29 @@ create table if not exists ai_summaries (
     material_id int primary key references materials(id) on delete cascade,
     text text not null
 );
+create table if not exists recordings (
+    id serial primary key,
+    material_id int not null references materials(id) on delete cascade,
+    author_id int not null references users(id) on delete cascade,
+    title text not null default '',
+    stored_name text not null,
+    mime text not null default 'audio/webm',
+    duration real not null default 0,
+    segments jsonb not null default '[]',
+    summary text,
+    shared boolean not null default false,
+    created_at timestamp not null
+);
+create table if not exists ai_messages (
+    id serial primary key,
+    user_id int not null references users(id) on delete cascade,
+    course_id int not null references courses(id) on delete cascade,
+    role text not null check (role in ('user', 'assistant')),
+    text text not null,
+    sources jsonb not null default '[]',
+    extra jsonb not null default '{}',
+    created_at timestamp not null
+);
 create table if not exists ai_usage (
     user_id int not null references users(id) on delete cascade,
     day date not null,

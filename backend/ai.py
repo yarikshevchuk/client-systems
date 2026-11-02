@@ -76,19 +76,30 @@ def spend(user):
         "on conflict (user_id, day) do update set count = ai_usage.count + 1", (user["id"], date.today()))
 
 
-def find_sources(course_id, question):
-    asked = words(question)
-    scored = []
+def course_sources(course_id):
     materials = db.select(
         "select m.id, m.title, m.kind, m.content from materials m join topics t on t.id = m.topic_id "
         "where t.course_id = %s", (course_id,))
-    for material in materials:
+    recordings = db.select(
+        "select r.material_id as id, r.title, r.segments from recordings r join materials m on m.id = r.material_id "
+        "join topics t on t.id = m.topic_id where t.course_id = %s and r.shared", (course_id,))
+    for row in recordings:
+        row["title"] = "Запис: " + row["title"]
+        row["kind"] = "recording"
+        row["content"] = " ".join(item["text"] for item in row.pop("segments"))
+    return materials + recordings
+
+
+def find_sources(course_id, question):
+    asked = words(question)
+    scored = []
+    for material in course_sources(course_id):
         score = len(asked & words(material["title"] + " " + material["content"]))
         if score:
             scored.append((score, material))
     scored.sort(key=lambda pair: -pair[0])
     ranked = [material for _, material in scored]
-    lectures = [material for material in ranked if material["kind"] == "lecture"]
+    lectures = [material for material in ranked if material["kind"] in ("lecture", "recording")]
     return (lectures or ranked)[:2]
 
 
@@ -114,6 +125,17 @@ def cloze_cards(content):
     return cards[:6]
 
 
+def make_summary(title, content):
+    text = call_llm(
+        "You summarize university lectures. Reply with 4 to 6 short bullet key points, one per line, "
+        "each starting with '- '. Use only the given lecture text. Reply in Ukrainian.",
+        title + "\n\n" + content)
+    demo = text is None
+    if demo:
+        text = "\n".join("- " + s for s in sentences(content)[:5]) or "- Текст порожній."
+    return text, demo
+
+
 @router.get("/ai/usage")
 def usage(user=Depends(current_user)):
     return {"used": usage_today(user["id"]), "limit": DAILY_LIMIT}
@@ -133,6 +155,13 @@ def write_settings(course_id: int, body: SettingsIn, user=Depends(current_user))
     return get_settings(course_id)
 
 
+@router.get("/materials/{material_id}/summary")
+def cached_summary(material_id: int, user=Depends(current_user)):
+    get_material(material_id, user)
+    cached = db.one("select text from ai_summaries where material_id = %s", (material_id,))
+    return {"summary": cached["text"] if cached else None}
+
+
 @router.post("/materials/{material_id}/summary")
 def summary(material_id: int, user=Depends(current_user)):
     material, course = get_material(material_id, user)
@@ -144,23 +173,13 @@ def summary(material_id: int, user=Depends(current_user)):
     if cached:
         return {"summary": cached["text"], "cached": True}
     spend(user)
-    text = call_llm(
-        "You summarize university lectures. Reply with 4 to 6 short bullet key points, one per line, "
-        "each starting with '- '. Use only the given lecture text. Reply in Ukrainian.",
-        material["title"] + "\n\n" + material["content"])
-    demo = text is None
-    if demo:
-        text = "\n".join("- " + s for s in sentences(material["content"])[:5]) or "- Текст лекції порожній."
+    text, demo = make_summary(material["title"], material["content"])
     db.execute("insert into ai_summaries (material_id, text) values (%s, %s) on conflict do nothing", (material_id, text))
     return {"summary": text, "cached": False, "demo": demo}
 
 
-@router.post("/courses/{course_id}/ask")
-def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
-    get_course(course_id, user)
-    if not get_settings(course_id)["ask_on"]:
-        raise HTTPException(403, "Викладач вимкнув AI-помічника для цього курсу")
-    sources = find_sources(course_id, body.question)
+def answer_question(user, course_id, question):
+    sources = find_sources(course_id, question)
     if not sources:
         return {"found": False, "answer": NOT_FOUND, "sources": []}
     spend(user)
@@ -169,10 +188,10 @@ def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
     system = ("You are a course assistant. Answer only from the given course materials. If the answer is not "
               f"there, reply exactly: {NOT_FOUND}. Materials of kind lab are graded: never give a complete "
               "solution, give hints and explain the theory. Reply in Ukrainian.")
-    text = call_llm(system, f"Materials:\n{context}\n\nQuestion: {body.question}")
+    text = call_llm(system, f"Materials:\n{context}\n\nQuestion: {question}")
     demo = text is None
     if demo:
-        picked = " ".join(best_sentences(sources[0]["content"], body.question, 2))
+        picked = " ".join(best_sentences(sources[0]["content"], question, 2))
         text = ("Це оцінювана робота, тому я не даю готового розв'язку. Підказки: " + picked) if graded else picked
     if not text.strip():
         text = NOT_FOUND
@@ -184,6 +203,14 @@ def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
         "graded": graded,
         "sources": [{"id": s["id"], "title": s["title"]} for s in sources] if found else [],
     }
+
+
+@router.post("/courses/{course_id}/ask")
+def ask(course_id: int, body: QuestionIn, user=Depends(current_user)):
+    get_course(course_id, user)
+    if not get_settings(course_id)["ask_on"]:
+        raise HTTPException(403, "Викладач вимкнув AI-помічника для цього курсу")
+    return answer_question(user, course_id, body.question)
 
 
 @router.post("/materials/{material_id}/flashcards/generate")
