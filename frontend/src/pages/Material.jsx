@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, download, fmt, relative, timeAgo } from '../api.js'
+import { api, download, fmt, fmtShort, relative, timeAgo } from '../api.js'
 import AiPanel from '../components/AiPanel.jsx'
 import MaterialForm from '../components/MaterialForm.jsx'
 import Notes from '../components/Notes.jsx'
@@ -60,6 +60,7 @@ function Attachments({ material, canManage, reload }) {
 function Upload({ material, onDone }) {
   const [file, setFile] = useState(null)
   const [comment, setComment] = useState('')
+  const [showComment, setShowComment] = useState(false)
   const [error, setError] = useState('')
   const toast = useToast()
   const sub = material.submission
@@ -107,11 +108,12 @@ function Upload({ material, onDone }) {
       )}
       {!graded && (
         <form onSubmit={submit} className="stack">
-          <FileDrop file={file} onChange={setFile} hint="PDF або DOCX, до 20 МБ" />
-          <label className="field">
-            <span className="label">Коментар для викладача (необов'язково)</span>
-            <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Усе, що варто знати викладачу" />
-          </label>
+          <FileDrop file={file} onChange={setFile} hint="PDF або DOCX" />
+          {showComment ? (
+            <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Коментар для викладача" autoFocus />
+          ) : (
+            <button type="button" className="link-btn small" onClick={() => setShowComment(true)}>+ Додати коментар</button>
+          )}
           {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
           <div><button type="submit" className="btn" disabled={!file}><Icon name="upload" size={16} />{sub ? 'Здати ще раз' : 'Здати'}</button></div>
         </form>
@@ -246,7 +248,7 @@ export default function Material({ user }) {
   const [material, setMaterial] = useState(null)
   const [error, setError] = useState('')
   const [dialog, setDialog] = useState(null)
-  const [panel, setPanel] = useState('notes')
+  const [panel, setPanel] = useState(null)
   const toast = useToast()
 
   function load() {
@@ -255,7 +257,7 @@ export default function Material({ user }) {
 
   useEffect(() => {
     setMaterial(null)
-    setPanel('notes')
+    setPanel(null)
     load()
   }, [id])
 
@@ -284,12 +286,14 @@ export default function Material({ user }) {
       <Link to={`/courses/${material.course_id}`} className="crumb"><Icon name="left" size={16} />{material.course_title} / {material.topic_title}</Link>
       <div className="title-row">
         <div>
+          <div className="kicker">{lab ? 'Лабораторна' : 'Лекція'}</div>
           <h1>{material.title}</h1>
-          <p className="meta-line">
-            {lab ? 'Лабораторна' : 'Лекція'}
-            {lab && <> · до <b>{fmt(material.deadline)}</b> · {material.max_points} балів</>}
-            {due && !(student && material.submission) && <span className={`status-text ${due.tone === 'ok' ? '' : due.tone}`}> · {due.text}</span>}
-          </p>
+          {lab && (
+            <p className="meta-line">
+              До <b>{fmtShort(material.deadline)}</b> · {material.max_points} балів
+              {due && !(student && material.submission) && <span className={`status-text ${due.tone === 'ok' ? '' : due.tone}`}> · {due.text}</span>}
+            </p>
+          )}
         </div>
         {material.can_manage && (
           <div className="row">

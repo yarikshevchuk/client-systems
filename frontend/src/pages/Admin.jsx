@@ -38,7 +38,6 @@ export default function Admin({ user }) {
       <div className="page-head">
         <div>
           <h1>Адміністрування</h1>
-          <p>Статистика платформи та користувачі.</p>
         </div>
       </div>
       <div className="grid three">

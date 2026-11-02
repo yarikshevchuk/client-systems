@@ -34,7 +34,6 @@ export default function Calendar() {
       <div className="page-head">
         <div>
           <h1>Календар</h1>
-          <p>Дедлайни всіх ваших курсів.</p>
         </div>
         <button className="btn secondary" onClick={() => download('/calendar.ics', 'deadlines.ics')}><Icon name="download" size={16} />Експорт .ics</button>
       </div>

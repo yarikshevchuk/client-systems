@@ -90,7 +90,6 @@ export default function Messages({ user }) {
       <div className="page-head">
         <div>
           <h1>Повідомлення</h1>
-          <p>Особисті розмови з викладачами та одногрупниками.</p>
         </div>
         <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Нове повідомлення</button>
       </div>

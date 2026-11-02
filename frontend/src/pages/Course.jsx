@@ -72,16 +72,8 @@ export default function Course({ user }) {
   return (
     <>
       <div className="course-head">
-        <div className="row" style={{ gap: 10, marginBottom: 6 }}>
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
-          <span className="muted">Курс · група {data.course.grp}</span>
-        </div>
-        <h1>{data.course.title}</h1>
-        <p className="row" style={{ gap: 8, marginTop: 8 }}>
-          <Avatar name={data.course.teacher} size={22} />
-          <span>{data.course.teacher}</span>
-        </p>
-        {data.course.description && <p className="muted" style={{ marginTop: 6, maxWidth: 680 }}>{data.course.description}</p>}
+        <h1><i className="dot" style={{ background: color }} />{data.course.title}</h1>
+        <div className="byline">{data.course.teacher}</div>
       </div>
       <div className="course-layout">
         <nav className="subnav">

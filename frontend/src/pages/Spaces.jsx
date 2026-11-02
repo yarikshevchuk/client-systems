@@ -62,7 +62,6 @@ export default function Spaces() {
       <div className="page-head">
         <div>
           <h1>Навчальні простори</h1>
-          <p>Групи для самоорганізованого навчання: знайдіть людей із тією ж темою або створіть власну.</p>
         </div>
         <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Новий простір</button>
       </div>

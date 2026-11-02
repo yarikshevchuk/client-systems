@@ -111,7 +111,6 @@ export default function Flashcards() {
       <div className="page-head">
         <div>
           <h1>Картки</h1>
-          <p>Картки з правильною відповіддю повертаються пізніше, а ті, що ви пропустили, — швидше.</p>
         </div>
         <div className="row">
           <button className="btn secondary" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Нова картка</button>

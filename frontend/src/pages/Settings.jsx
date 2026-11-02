@@ -92,7 +92,6 @@ export default function Settings({ user, onCoursesChanged }) {
       <div className="page-head">
         <div>
           <h1>Налаштування курсу</h1>
-          <p>Інформація про курс і правила AI.</p>
         </div>
       </div>
       <form className="card stack" onSubmit={save}>

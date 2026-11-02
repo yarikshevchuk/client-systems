@@ -672,3 +672,41 @@ a.item:hover { border-color: var(--border); box-shadow: none; }
 .meta-line { color: var(--muted); margin-top: 6px; }
 .meta-line b { font-weight: 560; }
 .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+
+/* ================= спрощення: один фокус на екрані ================= */
+h1 { font-size: 1.7rem; font-weight: 700; }
+.page-head { margin-bottom: 18px; align-items: center; }
+.group-title { margin-bottom: 8px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.notice { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 18px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); }
+.notice span { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.hero { padding: 22px 24px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); }
+.hero.warn { background: var(--warn-soft); border-color: #f0d4a6; }
+.hero.bad { background: var(--bad-soft); border-color: #efbcb6; }
+.hero-label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.hero.warn .hero-label { color: var(--warn); }
+.hero.bad .hero-label { color: var(--bad); }
+.hero-title { margin: 8px 0 6px; font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; }
+.hero-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; color: var(--text-2); }
+.btn.lg { height: 42px; padding: 0 22px; font-size: 0.98rem; border-radius: 8px; }
+
+.next-row, .course-line { display: flex; align-items: center; gap: 12px; padding: 12px 8px; border-bottom: 1px solid var(--border); color: var(--text); }
+.next-row:hover, .course-line:hover { background: var(--surface-2); }
+.next-row .grow, .course-line .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.course-line .grow { flex-direction: row; }
+.next-row b { font-weight: 600; }
+.status-text { font-size: 0.85rem; }
+
+/* курс: компактна шапка й рядки без другого рядка тексту */
+.course-head { padding-bottom: 10px; margin-bottom: 14px; border-bottom: 0; }
+.course-head h1 { display: flex; align-items: center; gap: 12px; }
+.course-head h1 .dot { width: 14px; height: 14px; }
+.course-head .byline { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+.topic-title h2 { font-size: 1.05rem; font-weight: 700; }
+.item .item-link .grow { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+.item .item-link .grow strong { font-weight: 560; }
+.kicker { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+.material-side .segmented { width: 100%; }
+.material-side .segmented button { flex: 1; }
+.material-side .segmented button { white-space: nowrap; padding: 0 6px; font-size: 0.85rem; }

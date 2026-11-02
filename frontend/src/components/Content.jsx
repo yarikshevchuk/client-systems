@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmt, relative } from '../api.js'
+import { api, fmtShort, relative } from '../api.js'
 import { Confirm, Empty, Icon, Modal, useToast } from './ui.jsx'
 import MaterialForm from './MaterialForm.jsx'
 
@@ -97,11 +97,10 @@ export default function Content({ data, canManage, student, reload }) {
                 </span>
                 <div className="grow">
                   <strong>{material.title}</strong>
-                  {material.kind === 'lab' && <span className="muted small">До {fmt(material.deadline)} · {material.max_points} балів</span>}
                 </div>
               </Link>
               <div className="side">
-                {student && <Status material={material} />}
+                {student ? <Status material={material} /> : material.kind === 'lab' && <span className="status-text">до {fmtShort(material.deadline)}</span>}
                 {editing && (
                   <div className="row-actions">
                     <button className="icon-btn" title="Редагувати" onClick={async () => setDialog({ type: 'material', topic, material: await api(`/materials/${material.id}`) })}><Icon name="edit" size={15} /></button>

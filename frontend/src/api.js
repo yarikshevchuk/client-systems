@@ -10,6 +10,9 @@ export const setToken = (token) =>
 export const fmt = (date) =>
   date ? new Date(date).toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }) : '—'
 
+export const fmtShort = (date) =>
+  date ? new Date(date).toLocaleString(LOCALE, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+
 export function plural(n, one, few, many) {
   const m10 = n % 10
   const m100 = n % 100
