@@ -58,6 +58,7 @@ npm run dev
 ```bash
 export ANTHROPIC_API_KEY=...        # ключ не комітити
 export AI_MODEL=claude-sonnet-5-5   # необов'язково
+export GEMINI_API_KEY=...           # або безкоштовний ключ Google AI Studio (GEMINI_MODEL, за замовчуванням gemini-2.5-flash)
 export AI_DAILY_LIMIT=30            # запитів на користувача за добу
 ```
 

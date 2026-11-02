@@ -34,24 +34,34 @@ class QuestionIn(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
 
 
+def post_json(url, headers, payload):
+    request = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={"content-type": "application/json", **headers})
+    with urllib.request.urlopen(request, timeout=40) as response:
+        return json.load(response)
+
+
 def call_llm(system, user):
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key:
-        return None
-    body = json.dumps({
-        "model": os.environ.get("AI_MODEL", "claude-sonnet-5-5"),
-        "max_tokens": 900,
-        "system": system,
-        "messages": [{"role": "user", "content": user}],
-    }).encode()
-    request = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages", data=body,
-        headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    gemini_key = os.environ.get("GEMINI_API_KEY")
     try:
-        with urllib.request.urlopen(request, timeout=40) as response:
-            return json.load(response)["content"][0]["text"].strip()
+        if anthropic_key:
+            data = post_json(
+                "https://api.anthropic.com/v1/messages",
+                {"x-api-key": anthropic_key, "anthropic-version": "2023-06-01"},
+                {"model": os.environ.get("AI_MODEL", "claude-sonnet-5-5"), "max_tokens": 900, "system": system,
+                 "messages": [{"role": "user", "content": user}]})
+            return data["content"][0]["text"].strip()
+        if gemini_key:
+            model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+            data = post_json(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                {"x-goog-api-key": gemini_key},
+                {"systemInstruction": {"parts": [{"text": system}]},
+                 "contents": [{"role": "user", "parts": [{"text": user}]}]})
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
     except Exception:
         return None
+    return None
 
 
 def sentences(text):
