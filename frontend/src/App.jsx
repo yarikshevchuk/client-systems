@@ -25,7 +25,7 @@ function Brand() {
   return (
     <Link to="/" className="brand">
       <span className="logo-mark">V</span>
-      VNS
+      <span className="brand-text">VNS<small>Навчальна платформа</small></span>
     </Link>
   )
 }
@@ -71,8 +71,18 @@ function Shell({ user, setUser, logout }) {
 
   return (
     <div className="shell">
-      <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
+      <header className="topbar">
+        <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Відкрити меню"><Icon name="menu" /></button>
         <Brand />
+        <SearchBox />
+        <Notifications />
+        <Link to="/profile" className="me">
+          <Avatar name={user.name} size={30} />
+          <span className="who"><strong>{user.name}</strong><span>{roleName(user.role)}</span></span>
+        </Link>
+        <button className="icon-btn" onClick={logout} aria-label="Вийти" title="Вийти"><Icon name="logout" /></button>
+      </header>
+      <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
         <nav className="nav">
           <NavLink to="/" end className={link}><Icon name="home" /><span className="text">Головна</span></NavLink>
           <NavLink to="/calendar" className={link}><Icon name="calendar" /><span className="text">Календар</span></NavLink>
@@ -96,25 +106,9 @@ function Shell({ user, setUser, logout }) {
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-foot">
-          <Link to="/profile" className="me">
-            <Avatar name={user.name} />
-            <span className="who">
-              <strong>{user.name}</strong>
-              <span>{roleName(user.role)}</span>
-            </span>
-          </Link>
-          <button className="icon-btn" onClick={logout} aria-label="Вийти" title="Вийти"><Icon name="logout" /></button>
-        </div>
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
       <div className="content">
-        <header className="topbar">
-          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Відкрити меню"><Icon name="menu" /></button>
-          <div className="mobile-brand"><Brand /></div>
-          <SearchBox />
-          <Notifications />
-        </header>
         <main>
           <Suspense fallback={<Loading />}>
             <Routes>

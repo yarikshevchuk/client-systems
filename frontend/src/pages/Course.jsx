@@ -75,8 +75,8 @@ export default function Course({ user }) {
 
   return (
     <>
-      <div className="course-head">
-        <h1><i className="dot" style={{ background: color }} />{data.course.title}</h1>
+      <div className="course-head" style={{ background: color }}>
+        <h1>{data.course.title}</h1>
         <div className="byline">{data.course.teacher}</div>
       </div>
       <div className="course-layout">

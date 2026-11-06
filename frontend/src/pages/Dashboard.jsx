@@ -47,6 +47,35 @@ function NewCourse({ onClose, onCreated }) {
   )
 }
 
+function CourseTile({ course, student, nextDeadline }) {
+  const color = colorFor(course.id)
+  const due = nextDeadline && relative(nextDeadline.deadline)
+  return (
+    <Link to={`/courses/${course.id}`} className="course-tile">
+      <div className="tile-band" style={{ background: color }}>
+        <h3>{course.title}</h3>
+        <span>{course.teacher}</span>
+      </div>
+      <div className="tile-body">
+        {student ? (
+          <>
+            <div className="row between small"><span className="muted">Бали за курс</span><b>{course.earned} / {course.total_max}</b></div>
+            <ProgressBar percent={course.total_max ? (100 * course.earned) / course.total_max : 0} color={color} />
+            <div className="tile-next small">
+              {nextDeadline ? <><span className="muted">Найближче:</span> {nextDeadline.title.split('.')[0]} · <span className={`status-text ${due.tone === 'ok' ? '' : due.tone}`}>{due.text}</span></> : <span className="muted">Немає невиконаних завдань</span>}
+            </div>
+          </>
+        ) : (
+          <div className="row between small">
+            <span className="muted">Група {course.grp}</span>
+            {course.ungraded > 0 ? <span className="badge warn">На перевірку: {course.ungraded}</span> : <span className="badge ok">Усе перевірено</span>}
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}
+
 function TeacherDashboard({ data, user, onChanged }) {
   const [adding, setAdding] = useState(false)
   const ungraded = data.courses.reduce((sum, course) => sum + course.ungraded, 0)
@@ -57,7 +86,11 @@ function TeacherDashboard({ data, user, onChanged }) {
         <h1>Привіт, {user.name.split(' ')[0]}</h1>
         <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Новий курс</button>
       </div>
-      <div className="dash-layout">
+      <h3 className="group-title">Мої курси</h3>
+      <div className="tile-grid">
+        {data.courses.map((course) => <CourseTile key={course.id} course={course} student={false} />)}
+      </div>
+      <div className="dash-layout single">
         <div>
           <h3 className="group-title">На перевірку {ungraded > 0 ? `· ${ungraded}` : ''}</h3>
           {data.recent.length === 0 && <Empty icon="check">Усе перевірено.</Empty>}
@@ -73,16 +106,6 @@ function TeacherDashboard({ data, user, onChanged }) {
             </Link>
           ))}
         </div>
-        <aside className="side-list">
-          <h3 className="group-title">Мої курси</h3>
-          {data.courses.map((course) => (
-            <Link to={`/courses/${course.id}`} className="course-line" key={course.id}>
-              <i className="dot" style={{ background: colorFor(course.id) }} />
-              <span className="grow">{course.title}</span>
-              {course.ungraded > 0 && <span className="status-text warn">{course.ungraded}</span>}
-            </Link>
-          ))}
-        </aside>
       </div>
       {adding && <NewCourse onClose={() => setAdding(false)} onCreated={onChanged} />}
     </>
@@ -115,9 +138,8 @@ export default function Dashboard({ user, onCoursesChanged }) {
     )
   }
 
-  const [next, ...others] = data.deadlines
+  const next = data.deadlines[0]
   const news = data.announcements.filter((item) => !item.read).slice(0, 2)
-  const nextDue = next && relative(next.deadline)
 
   return (
     <>
@@ -131,19 +153,15 @@ export default function Dashboard({ user, onCoursesChanged }) {
           <span><b>{item.title}</b> · {item.course_title}</span>
         </Link>
       ))}
-      <div className="dash-layout">
+      <h3 className="group-title">Мої курси</h3>
+      <div className="tile-grid">
+        {data.courses.map((course) => <CourseTile key={course.id} course={course} student nextDeadline={data.deadlines.find((row) => row.course_id === course.id)} />)}
+      </div>
+      <h3 className="group-title" style={{ marginTop: 28 }}>Завдання, які треба здати</h3>
+      <div className="dash-layout single">
         <div>
           {!next && <Empty icon="check">Усе здано. Можна відпочити.</Empty>}
-          {next && (
-            <div className={`hero ${nextDue.tone}`}>
-              <div className="hero-label">{next.overdue ? 'Прострочено' : 'Найближче'} · {nextDue.text}</div>
-              <h2 className="hero-title">{next.title}</h2>
-              <div className="hero-meta"><i className="dot" style={{ background: colorFor(next.course_id) }} />{next.course_title} · до {fmtShort(next.deadline)}</div>
-              <Link to={`/materials/${next.id}`} className="btn lg">Здати роботу</Link>
-            </div>
-          )}
-          {others.length > 0 && <h3 className="group-title" style={{ marginTop: 26 }}>Далі</h3>}
-          {others.map((row) => {
+          {data.deadlines.map((row) => {
             const due = relative(row.deadline)
             return (
               <Link to={`/materials/${row.id}`} className="next-row" key={row.id}>
@@ -157,16 +175,6 @@ export default function Dashboard({ user, onCoursesChanged }) {
             )
           })}
         </div>
-        <aside className="side-list">
-          <h3 className="group-title">Мої курси</h3>
-          {data.courses.map((course) => (
-            <Link to={`/courses/${course.id}`} className="course-line" key={course.id}>
-              <i className="dot" style={{ background: colorFor(course.id) }} />
-              <span className="grow">{course.title}</span>
-              <b>{course.earned}<span className="muted small"> / {course.total_max}</span></b>
-            </Link>
-          ))}
-        </aside>
       </div>
     </>
   )
