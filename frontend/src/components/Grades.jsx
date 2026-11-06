@@ -94,9 +94,9 @@ export function Gradebook({ courseId }) {
   }, [courseId])
 
   function exportCsv() {
-    const rows = [['Студент', ...data.labs.map((lab) => lab.title), 'Зароблено', 'Відсоток за оціненими']]
+    const rows = [['Студент', ...data.labs.map((lab) => lab.title), 'Зароблено', 'Відсоток за оціненими', 'Стан']]
     data.students.forEach((student) => {
-      rows.push([student.name, ...student.cells.map((cell) => (cell ? (cell.grade ?? 'здано') : '')), student.earned, student.percent_graded ?? ''])
+      rows.push([student.name, ...student.cells.map((cell) => (cell ? (cell.grade ?? 'здано') : '')), student.earned, student.percent_graded ?? '', student.at_risk ? 'Відстає: ' + student.risk_reasons.join('; ') : 'Усе гаразд'])
     })
     const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n')
     const link = document.createElement('a')
@@ -142,13 +142,89 @@ export function Gradebook({ courseId }) {
                 })}
                 <td><strong>{student.earned}</strong> <span className="muted small">{student.percent_graded === null ? '' : `${student.percent_graded}%`}</span></td>
                 <td>
-                  {student.overdue > 0 ? <span className="badge bad">{student.overdue} прострочено</span> : <span className="badge ok">Усе гаразд</span>}
+                  {student.at_risk ? <span className="badge bad" title={student.risk_reasons.join('; ')}>Відстає</span> : <span className="badge ok">Усе гаразд</span>}
                   <div className="muted small">{student.last_seen ? `В мережі ${timeAgo(student.last_seen)}` : 'Ще не входив(ла)'}</div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+export function Analytics({ courseId }) {
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    api(`/courses/${courseId}/gradebook`).then(setData)
+  }, [courseId])
+
+  if (!data) return <Loading />
+  const students = data.students
+  const atRisk = students.filter((student) => student.at_risk)
+  const graded = students.filter((student) => student.percent_graded !== null)
+  const average = graded.length ? Math.round(graded.reduce((sum, s) => sum + s.percent_graded, 0) / graded.length) : null
+  const expected = students.length * data.labs.filter((lab) => lab.deadline && new Date(lab.deadline) < new Date()).length
+  const submittedDue = students.reduce((sum, s) => sum + s.cells.filter((cell, i) => cell && data.labs[i].deadline && new Date(data.labs[i].deadline) < new Date()).length, 0)
+  const rate = expected ? Math.round((100 * submittedDue) / expected) : null
+
+  function exportReport() {
+    const rows = [['Лабораторна', 'Здали', 'Вчасно', 'Оцінено', 'Середня оцінка', 'Максимум']]
+    data.labs.forEach((lab) => rows.push([lab.title, `${lab.submitted}/${students.length}`, lab.on_time, lab.graded, lab.average ?? '', lab.max_points]))
+    rows.push([])
+    rows.push(['Студенти, що відстають', 'Причина'])
+    atRisk.forEach((s) => rows.push([s.name, s.risk_reasons.join('; ')]))
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }))
+    link.download = 'zvit-kursu.csv'
+    link.click()
+  }
+
+  return (
+    <div className="stack">
+      <div className="row between wrap">
+        <h2>Аналітика групи</h2>
+        <button className="btn secondary sm" onClick={exportReport}><Icon name="download" size={14} />Звіт CSV</button>
+      </div>
+      <div className="stat-row">
+        <div className="stat-box"><span>Студентів</span><b>{students.length}</b></div>
+        <div className="stat-box"><span>Середній результат</span><b>{average === null ? '—' : `${average} %`}</b></div>
+        <div className="stat-box"><span>Здано з минулих дедлайнів</span><b>{rate === null ? '—' : `${rate} %`}</b></div>
+        <div className={atRisk.length ? 'stat-box bad' : 'stat-box'}><span>Відстають</span><b>{atRisk.length}</b></div>
+      </div>
+      <div className="card">
+        <div className="card-title"><span className="icon-wrap"><Icon name="alert" size={16} /></span><h2>Хто відстає</h2></div>
+        {atRisk.length === 0 && <p className="muted">Усі студенти встигають.</p>}
+        {atRisk.map((student) => (
+          <div className="member-row" key={student.id}>
+            <Avatar name={student.name} size={30} />
+            <div className="grow"><b>{student.name}</b><div className="muted small">{student.risk_reasons.join(' · ')}</div></div>
+            <Link className="btn secondary sm" to={`/messages/${student.id}`}><Icon name="chat" size={14} />Написати</Link>
+          </div>
+        ))}
+      </div>
+      <div className="card">
+        <div className="card-title"><span className="icon-wrap"><Icon name="chart" size={16} /></span><h2>Лабораторні</h2></div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Робота</th><th>Здали</th><th>Вчасно</th><th>Середня оцінка</th></tr></thead>
+            <tbody>
+              {data.labs.map((lab) => (
+                <tr key={lab.id}>
+                  <td><Link to={`/materials/${lab.id}`}>{lab.title}</Link></td>
+                  <td style={{ minWidth: 160 }}>
+                    <div className="row"><span style={{ minWidth: 42 }}>{lab.submitted}/{students.length}</span><div style={{ flex: 1 }}><ProgressBar percent={students.length ? (100 * lab.submitted) / students.length : 0} color="var(--accent)" /></div></div>
+                  </td>
+                  <td>{lab.on_time}</td>
+                  <td>{lab.average === null ? '—' : `${lab.average} / ${lab.max_points}`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

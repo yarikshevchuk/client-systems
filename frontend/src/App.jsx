@@ -48,12 +48,36 @@ function SearchBox() {
   )
 }
 
+function ThemeButton() {
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
+
+  function toggle() {
+    const next = !dark
+    document.documentElement.dataset.theme = next ? 'dark' : 'light'
+    try { localStorage.setItem('theme', next ? 'dark' : 'light') } catch { /* private mode */ }
+    setDark(next)
+  }
+
+  return <button className="icon-btn" onClick={toggle} aria-label={dark ? 'Світла тема' : 'Темна тема'} title={dark ? 'Світла тема' : 'Темна тема'}><Icon name={dark ? 'sun' : 'moon'} /></button>
+}
+
 function Shell({ user, setUser, logout }) {
   const [courses, setCourses] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [dueCards, setDueCards] = useState(0)
   const location = useLocation()
   const { counters } = useLive()
+  const [online, setOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+    }
+  }, [])
 
   const loadCourses = useCallback(() => api('/courses').then(setCourses), [])
 
@@ -76,6 +100,7 @@ function Shell({ user, setUser, logout }) {
         <Brand />
         <SearchBox />
         <Notifications />
+        <ThemeButton />
         <Link to="/profile" className="me">
           <Avatar name={user.name} size={30} />
           <span className="who"><strong>{user.name}</strong><span>{roleName(user.role)}</span></span>
@@ -110,6 +135,7 @@ function Shell({ user, setUser, logout }) {
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
       <div className="content">
         <main>
+          {!online && <div className="offline-bar">Немає з’єднання з інтернетом. Показано збережені дані, зміни недоступні.</div>}
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<Dashboard user={user} onCoursesChanged={loadCourses} />} />
@@ -152,6 +178,7 @@ export default function App() {
   }, [])
 
   function logout() {
+    if ('caches' in window) caches.delete('vns-data-v1')
     setToken(null)
     setUser(null)
     navigate('/')

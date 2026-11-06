@@ -245,6 +245,20 @@ def gradebook(course_id: int, user=Depends(current_user)):
         student["percent_graded"] = round(100 * student["earned"] / student["graded_max"]) if student["graded_max"] else None
         student["submitted"] = sum(1 for c in cells if c)
         student["overdue"] = sum(1 for c, lab in zip(cells, labs) if not c and lab["deadline"] and lab["deadline"] < now)
+        reasons = []
+        if student["overdue"]:
+            reasons.append(f"не здано вчасно: {student['overdue']}")
+        if student["percent_graded"] is not None and student["percent_graded"] < 60:
+            reasons.append(f"середній результат {student['percent_graded']} %")
+        student["at_risk"] = bool(reasons)
+        student["risk_reasons"] = reasons
+    for index, lab in enumerate(labs):
+        cells = [student["cells"][index] for student in students]
+        grades = [c["grade"] for c in cells if c and c["grade"] is not None]
+        lab["submitted"] = sum(1 for c in cells if c)
+        lab["on_time"] = sum(1 for c in cells if c and lab["deadline"] and c["submitted_at"] <= lab["deadline"])
+        lab["graded"] = len(grades)
+        lab["average"] = round(sum(grades) / len(grades), 1) if grades else None
     return {"labs": labs, "students": students, "total_max": total_max}
 
 

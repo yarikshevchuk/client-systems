@@ -183,6 +183,29 @@ create table if not exists ai_messages (
     extra jsonb not null default '{}',
     created_at timestamp not null
 );
+create table if not exists space_tasks (
+    id serial primary key,
+    space_id int not null references spaces(id) on delete cascade,
+    title text not null,
+    assignee_id int references users(id) on delete set null,
+    status text not null default 'todo' check (status in ('todo', 'doing', 'done')),
+    created_by int not null references users(id) on delete cascade,
+    created_at timestamp not null,
+    done_at timestamp
+);
+create table if not exists space_files (
+    id serial primary key,
+    space_id int not null references spaces(id) on delete cascade,
+    user_id int not null references users(id) on delete cascade,
+    filename text not null,
+    stored_name text not null,
+    size int not null,
+    created_at timestamp not null
+);
+alter table messages drop constraint if exists messages_channel_check;
+alter table messages add column if not exists file_name text;
+alter table messages add column if not exists stored_name text;
+alter table users add column if not exists ticket text;
 create table if not exists ai_usage (
     user_id int not null references users(id) on delete cascade,
     day date not null,

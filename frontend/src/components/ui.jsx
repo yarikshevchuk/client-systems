@@ -38,6 +38,9 @@ const ICONS = {
   mic: (<><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M19 10v1a7 7 0 0 1-14 0v-1" /><line x1="12" y1="18" x2="12" y2="22" /></>),
   play: <polygon points="6 4 20 12 6 20 6 4" />,
   stop: <rect x="5" y="5" width="14" height="14" rx="2" />,
+  moon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />,
+  sun: (<><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>),
+  chart: (<><line x1="4" y1="20" x2="4" y2="10" /><line x1="10" y1="20" x2="10" y2="4" /><line x1="16" y1="20" x2="16" y2="13" /><line x1="2" y1="20" x2="22" y2="20" /></>),
   eye: (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>),
 }
 
@@ -151,7 +154,7 @@ export function Tabs({ value, onChange, options }) {
     <div className="tabs" role="tablist">
       {options.map((option) => (
         <button key={option.value} type="button" role="tab" aria-selected={option.value === value} className={option.value === value ? 'active' : ''} onClick={() => onChange(option.value)}>
-          <Icon name={option.icon} size={16} />
+          {option.icon && <Icon name={option.icon} size={16} />}
           {option.label}
         </button>
       ))}

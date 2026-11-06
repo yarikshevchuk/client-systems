@@ -18,7 +18,7 @@ async def make_reminders(user):
         (user["id"], user["grp"], now, now + timedelta(hours=72)))
     for row in rows:
         hours = (row["deadline"] - now).total_seconds() / 3600
-        bucket = 24 if hours <= 24 else 72
+        bucket = 3 if hours <= 3 else 24 if hours <= 24 else 72
         await notify([user["id"]], "reminder", f"{row['title']}: до дедлайну менше {bucket} годин",
                      f"/materials/{row['id']}", key=f"due{bucket}:{row['id']}")
 

@@ -5,7 +5,7 @@ import { api, timeAgo } from '../api.js'
 import Announcements from '../components/Announcements.jsx'
 import Content from '../components/Content.jsx'
 import Discussion from '../components/Discussion.jsx'
-import { Gradebook, StudentGrades } from '../components/Grades.jsx'
+import { Analytics, Gradebook, StudentGrades } from '../components/Grades.jsx'
 import { Avatar, colorFor, Icon, Loading } from '../components/ui.jsx'
 
 function People({ courseId }) {
@@ -72,6 +72,7 @@ export default function Course({ user }) {
     ['people', 'Люди'],
     student ? ['grades', 'Мої оцінки'] : ['gradebook', 'Журнал оцінок'],
   ]
+  if (data.can_manage) items.push(['analytics', 'Аналітика'])
 
   return (
     <>
@@ -94,6 +95,7 @@ export default function Course({ user }) {
           {tab === 'people' && <People courseId={id} />}
           {tab === 'grades' && student && <StudentGrades courseId={id} color={color} />}
           {tab === 'gradebook' && !student && <Gradebook courseId={id} />}
+          {tab === 'analytics' && data.can_manage && <Analytics courseId={id} />}
         </div>
       </div>
     </>

@@ -457,3 +457,56 @@ def test_agent(client):
     assert client.delete(f"/api/courses/{cid}/agent", headers=student).status_code == 200
     assert get(client, student, f"/api/courses/{cid}/agent") == []
     assert client.get(f"/api/courses/{cid}/agent", headers=login(client, "yulia@vns.demo")).status_code == 403
+
+
+def test_channels_and_files(client):
+    student = login(client, "andrii@vns.demo")
+    cid = course_id(client, student, "Алгоритми та структури даних")
+    channels = get(client, student, f"/api/courses/{cid}/channels")
+    ids = [c["id"] for c in channels]
+    assert ids[:2] == ["qa", "general"] and any(i.startswith("topic-") for i in ids) and any(i.startswith("lab-") for i in ids)
+    lab = next(c for c in channels if c["id"].startswith("lab-"))
+    assert client.post(f"/api/courses/{cid}/messages", headers=student, json={"channel": "nope", "text": "x"}).status_code == 422
+    sent = client.post(f"/api/courses/{cid}/messages/file", headers=student, data={"channel": lab["id"], "text": "мій код"},
+                       files={"file": ("main.py", b"print(1)", "text/x-python")})
+    assert sent.status_code == 200 and sent.json()["file_name"] == "main.py"
+    listed = get(client, student, f"/api/courses/{cid}/messages?channel={lab['id']}")
+    assert listed[-1]["text"] == "мій код"
+    assert client.get(f"/api/messages/{sent.json()['id']}/file", headers=student).content == b"print(1)"
+    assert client.get(f"/api/messages/{sent.json()['id']}/file", headers=login(client, "yulia@vns.demo")).status_code == 403
+
+
+def test_space_board(client):
+    owner = login(client, "andrii@vns.demo")
+    other = login(client, "maryna@vns.demo")
+    space = client.post("/api/spaces", headers=owner, json={"title": "Команда BFS", "topic": "графи"}).json()
+    sid = space["id"]
+    me = get(client, owner, "/api/me")["id"]
+    assert client.post(f"/api/spaces/{sid}/tasks", headers=other, json={"title": "x"}).status_code == 403
+    task = client.post(f"/api/spaces/{sid}/tasks", headers=owner, json={"title": "Написати BFS", "assignee_id": me}).json()
+    maryna = get(client, other, "/api/me")["id"]
+    assert client.post(f"/api/spaces/{sid}/tasks", headers=owner, json={"title": "y", "assignee_id": maryna}).status_code == 422
+    assert client.put(f"/api/space-tasks/{task['id']}", headers=owner, json={"status": "done"}).json()["status"] == "done"
+    client.post(f"/api/spaces/{sid}/files", headers=owner, files={"file": ("plan.txt", b"plan", "text/plain")})
+    detail = get(client, owner, f"/api/spaces/{sid}")
+    assert len(detail["tasks"]) == 1 and len(detail["files"]) == 1
+    assert detail["members"][0]["done"] == 1 and detail["members"][0]["files"] == 1
+    assert client.get(f"/api/space-files/{detail['files'][0]['id']}/file", headers=other).status_code == 403
+
+
+def test_analytics_and_import(client):
+    teacher = login(client, "olena@vns.demo")
+    cid = course_id(client, teacher, "Алгоритми та структури даних")
+    book = get(client, teacher, f"/api/courses/{cid}/gradebook")
+    assert all("at_risk" in s and "risk_reasons" in s for s in book["students"])
+    assert any(s["at_risk"] for s in book["students"])
+    assert all("submitted" in lab and "average" in lab for lab in book["labs"])
+    admin = login(client, "admin@vns.demo")
+    csv_text = "Номер;ПІБ;Група\n100200;Олег Тестовий;КН-21\n100201;Ірина Тестова;КН-22\nпогано\n".encode()
+    result = client.post("/api/admin/import", headers=admin, files={"file": ("reg.csv", csv_text, "text/csv")}).json()
+    assert len(result["created"]) == 2 and len(result["skipped"]) == 1
+    first = result["created"][0]
+    assert client.post("/api/login", json={"email": first["email"], "password": first["password"]}).status_code == 200
+    again = client.post("/api/admin/import", headers=admin, files={"file": ("reg.csv", csv_text, "text/csv")}).json()
+    assert again["created"] == [] and len(again["skipped"]) == 3
+    assert client.post("/api/admin/import", headers=teacher, files={"file": ("reg.csv", csv_text, "text/csv")}).status_code == 403

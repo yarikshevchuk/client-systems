@@ -220,11 +220,11 @@ def seed():
         (lecture3, olena, "Запис лекції 3 (демо, без звуку)", stored_audio, "audio/wav", 75,
          json.dumps([{"start": start, "text": text} for start, text in LECTURE3_TRANSCRIPT]), True, at(-5)))
 
-    submit(lab1, andrii, 8, "Добрі вимірювання. Поясніть графік бінарного пошуку докладніше.")
-    submit(lab1, maryna, 10, "Чудова робота.")
-    submit(lab1, ivan, 7, "Додайте висновок про O(log n).")
-    submit(lab1, sofiia, 9)
-    submit(lab1, danylo, 6, "Немає вимірювань для 100000 елементів.")
+    submit(lab1, andrii, 8, "Добрі вимірювання. Поясніть графік бінарного пошуку докладніше.", days_ago=16)
+    submit(lab1, maryna, 10, "Чудова робота.", days_ago=16)
+    submit(lab1, ivan, 7, "Додайте висновок про O(log n).", days_ago=16)
+    submit(lab1, sofiia, 9, days_ago=16)
+    submit(lab1, danylo, 6, "Немає вимірювань для 100000 елементів.", days_ago=16)
     submit(lab2, andrii, None, comment="Використав сортування злиттям з лекції.", days_ago=2)
     submit(lab2, maryna, None, days_ago=3)
     submit(lab2, ivan, 9, "Зрозуміла таблиця порівняння.")
@@ -264,6 +264,9 @@ def seed():
     message(algorithms, "general", olena, "Ласкаво просимо на курс. Цей канал для всього, що не є запитанням.", minutes=-5000)
     message(algorithms, "general", maryna, "Хтось хоче разом готуватися до іспиту на вихідних?", minutes=-300)
     message(algorithms, "general", sofiia, "Так, я за. Я створила навчальний простір для цього.", minutes=-280)
+    message(algorithms, f"lab-{lab3}", olena, "Сюди пишіть усе про лабораторну 3: питання щодо графів, приклади вхідних даних.", minutes=-3000)
+    message(algorithms, f"lab-{lab3}", ivan, "Граф можна задавати списком суміжності з файлу чи прямо в коді?", minutes=-200)
+    message(algorithms, f"lab-{lab3}", olena, "Як зручно, але покажіть обидва обходи на тому самому графі.", minutes=-180)
 
     def dm(sender, recipient, text, minutes, read=True):
         db.insert(
@@ -285,8 +288,9 @@ def seed():
         for index, (author, text) in enumerate(messages):
             db.insert("insert into space_messages (space_id, user_id, text, created_at) values (%s, %s, %s, %s)",
                       (space_id, author, text, at(minutes=-400 + index * 20)))
+        return space_id
 
-    space("Підготовка до іспиту з алгоритмів", "Алгоритми", "Щотижневі зустрічі: разом розв'язуємо задачі з минулих іспитів.", maryna,
+    exam_space = space("Підготовка до іспиту з алгоритмів", "Алгоритми", "Щотижневі зустрічі: разом розв'язуємо задачі з минулих іспитів.", maryna,
           [andrii, ivan, sofiia],
           [(maryna, "Давайте зустрінемося сьогодні о 19:00 і пройдемо сортування та графи."),
            (ivan, "Я можу пояснити сортування злиттям, мені воно було зрозуміле."),
@@ -294,6 +298,17 @@ def seed():
            (andrii, "Чудово, до зустрічі!")])
     space("SQL-клуб", "Бази даних", "Практикуємо SQL-запити на реальних наборах даних.", ivan, [danylo],
           [(ivan, "З якого набору даних хочете почати?"), (danylo, "Давайте візьмемо схему університету з лабораторної 1.")])
+    for title, assignee, status in [("Розв'язати задачі на сортування з іспиту 2025", ivan, "done"),
+                                    ("Підготувати задачі на BFS і DFS", sofiia, "doing"),
+                                    ("Конспект: складність алгоритмів", andrii, "todo"),
+                                    ("Знайти варіанти минулих іспитів", maryna, "done")]:
+        db.insert("insert into space_tasks (space_id, title, assignee_id, status, created_by, created_at, done_at) "
+                  "values (%s, %s, %s, %s, %s, %s, %s)",
+                  (exam_space, title, assignee, status, maryna, at(-3), at(-1) if status == "done" else None))
+    plan = uuid.uuid4().hex
+    (db.UPLOADS / plan).write_text("План підготовки:\n1. Сортування\n2. Графи\n3. Складність\n", encoding="utf-8")
+    db.insert("insert into space_files (space_id, user_id, filename, stored_name, size, created_at) values (%s, %s, %s, %s, %s, %s)",
+              (exam_space, maryna, "План підготовки.txt", plan, 60, at(-2)))
     space("Англійська для співбесід в IT", "Англійська", "Пробні співбесіди й лексика для розробників.", sofiia, [], [])
 
     db.insert("insert into notes (user_id, material_id, text, updated_at) values (%s, %s, %s, %s)",
