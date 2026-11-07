@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import { api, setToken } from '../api.js'
-import { Avatar, Icon, Segmented } from '../components/ui.jsx'
+import { Avatar, Choice, Icon } from '../components/ui.jsx'
 
 const DEMO = [
-  { name: 'Андрій Мельник', role: 'Студент', email: 'andrii@vns.demo' },
-  { name: 'Марина Шевчук', role: 'Студент · староста групи', email: 'maryna@vns.demo' },
-  { name: 'Олена Коваленко', role: 'Викладач', email: 'olena@vns.demo' },
-  { name: 'Адміністратор VNS', role: 'Адміністратор', email: 'admin@vns.demo' },
+  ['Андрій Мельник', 'Студент', 'andrii@vns.demo'],
+  ['Марина Шевчук', 'Студент · староста групи', 'maryna@vns.demo'],
+  ['Олена Коваленко', 'Викладач', 'olena@vns.demo'],
+  ['Адміністратор VNS', 'Адміністратор', 'admin@vns.demo'],
 ]
 
 const FEATURES = [
-  { icon: 'calendar', title: 'Усі дедлайни в одному місці', text: 'Бачте, що й коли здавати, здавайте роботи та читайте відгуки викладача в тому ж курсі.' },
-  { icon: 'award', title: 'Чесний прогноз оцінки', text: 'Зароблені бали, результат за оціненими роботами й максимум, який ще можна набрати.' },
-  { icon: 'chat', title: 'Запитання лишаються в курсі', text: 'Q&A з прийнятими відповідями, оголошення з підтвердженням прочитання та особисті повідомлення.' },
-  { icon: 'sparkle', title: 'AI-допомога за правилами викладача', text: 'Конспекти, картки й відповіді лише за матеріалами курсу, для оцінюваних лабораторних тільки підказки.' },
+  ['calendar', 'Усі дедлайни в одному місці', 'Бачте, що й коли здавати, здавайте роботи та читайте відгуки викладача в тому ж курсі.'],
+  ['award', 'Чесний прогноз оцінки', 'Зароблені бали, результат за оціненими роботами й максимум, який ще можна набрати.'],
+  ['chat', 'Запитання лишаються в курсі', 'Q&A з прийнятими відповідями, оголошення з підтвердженням прочитання та особисті повідомлення.'],
+  ['sparkle', 'AI-допомога за правилами викладача', 'Конспекти, картки й відповіді лише за матеріалами курсу, для оцінюваних лабораторних тільки підказки.'],
 ]
 
 export default function Login({ onLogin }) {
@@ -42,34 +42,26 @@ export default function Login({ onLogin }) {
   return (
     <div className="auth">
       <section className="auth-side">
-        <div className="brand">
-          <span className="logo-mark">V</span>
-          VNS
-        </div>
+        <div className="brand"><span className="logo-mark">V</span>VNS</div>
         <h1 style={{ marginTop: 40, maxWidth: 420 }}>Навчання, у якому все під контролем.</h1>
         <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>Курси, дедлайни, запитання й оцінки для студентів і викладачів.</p>
         <div className="features">
-          {FEATURES.map((feature) => (
-            <div className="feature" key={feature.title}>
-              <span className="icon-wrap"><Icon name={feature.icon} /></span>
-              <div>
-                <strong>{feature.title}</strong>
-                <p>{feature.text}</p>
-              </div>
+          {FEATURES.map(([icon, title, text]) => (
+            <div className="feature" key={title}>
+              <span className="icon-wrap"><Icon name={icon} /></span>
+              <div><strong>{title}</strong><p>{text}</p></div>
             </div>
           ))}
         </div>
       </section>
+
       <section className="auth-main">
         <div className="auth-box">
-          <div className="brand" style={{ padding: 0 }}>
-            <span className="logo-mark">V</span>
-            VNS
-          </div>
+          <div className="brand" style={{ padding: 0 }}><span className="logo-mark">V</span>VNS</div>
           <h1>{mode === 'login' ? 'З поверненням' : 'Створіть акаунт'}</h1>
           <p className="muted">{mode === 'login' ? 'Увійдіть, щоб перейти до своїх курсів.' : 'Приєднайтеся до своєї групи та курсів.'}</p>
           <div style={{ marginTop: 18 }}>
-            <Segmented value={mode} onChange={setMode} options={[{ value: 'login', label: 'Вхід' }, { value: 'register', label: 'Реєстрація' }]} />
+            <Choice value={mode} onChange={setMode} options={[['login', 'Вхід'], ['register', 'Реєстрація']]} />
           </div>
           <form className="stack" style={{ marginTop: 18 }} onSubmit={submit}>
             {mode === 'register' && (
@@ -80,7 +72,7 @@ export default function Login({ onLogin }) {
                 </label>
                 <div className="field">
                   <span className="label">Я</span>
-                  <Segmented value={form.role} onChange={(role) => setForm({ ...form, role })} options={[{ value: 'student', label: 'студент' }, { value: 'teacher', label: 'викладач' }]} />
+                  <Choice value={form.role} onChange={(role) => setForm({ ...form, role })} options={[['student', 'студент'], ['teacher', 'викладач']]} />
                 </div>
                 {form.role === 'student' && (
                   <label className="field">
@@ -101,17 +93,15 @@ export default function Login({ onLogin }) {
             {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
             <button className="btn block" type="submit">{mode === 'login' ? 'Увійти' : 'Створити акаунт'}</button>
           </form>
+
           {mode === 'login' && (
             <>
               <div className="divider">або спробуйте демо-акаунт</div>
               <div className="profiles">
-                {DEMO.map((account) => (
-                  <button key={account.email} className="profile" onClick={() => send('/login', { email: account.email, password: 'demo' })}>
-                    <Avatar name={account.name} size={36} />
-                    <span>
-                      <strong>{account.name}</strong>
-                      <span className="muted small">{account.role}</span>
-                    </span>
+                {DEMO.map(([name, role, email]) => (
+                  <button key={email} className="profile" onClick={() => send('/login', { email, password: 'demo' })}>
+                    <Avatar name={name} size={36} />
+                    <span><strong>{name}</strong><span className="muted small">{role}</span></span>
                   </button>
                 ))}
               </div>

@@ -3,6 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
 import { Avatar, Empty, Icon, Loading } from '../components/ui.jsx'
 
+function Result({ to, icon, title, subtitle }) {
+  return (
+    <Link className="item" to={to}>
+      <span className="icon-wrap"><Icon name={icon} size={20} /></span>
+      <div className="grow"><strong className="clip">{title}</strong><span className="muted small clip">{subtitle}</span></div>
+    </Link>
+  )
+}
+
 function Group({ title, icon, children }) {
   return (
     <div className="section">
@@ -36,52 +45,27 @@ export default function Search() {
       {q.length >= 2 && total === 0 && <Empty icon="search">Нічого не знайдено. Спробуйте інше слово.</Empty>}
       {data.courses.length > 0 && (
         <Group title="Курси" icon="book">
-          {data.courses.map((row) => (
-            <Link className="item" to={`/courses/${row.id}`} key={row.id}>
-              <span className="icon-wrap"><Icon name="book" size={20} /></span>
-              <div className="grow"><strong>{row.title}</strong><span className="muted small clip">{row.description}</span></div>
-            </Link>
-          ))}
+          {data.courses.map((row) => <Result key={row.id} to={`/courses/${row.id}`} icon="book" title={row.title} subtitle={row.description} />)}
         </Group>
       )}
       {data.materials.length > 0 && (
         <Group title="Матеріали" icon="file">
-          {data.materials.map((row) => (
-            <Link className="item" to={`/materials/${row.id}`} key={row.id}>
-              <span className="icon-wrap accent"><Icon name={row.kind === 'lab' ? 'file' : 'book'} size={20} /></span>
-              <div className="grow"><strong>{row.title}</strong><span className="muted small">{row.course_title} · {row.kind === 'lab' ? 'лабораторна' : 'лекція'}</span></div>
-            </Link>
-          ))}
+          {data.materials.map((row) => <Result key={row.id} to={`/materials/${row.id}`} icon={row.kind === 'lab' ? 'file' : 'book'} title={row.title} subtitle={`${row.course_title} · ${row.kind === 'lab' ? 'лабораторна' : 'лекція'}`} />)}
         </Group>
       )}
       {data.announcements.length > 0 && (
         <Group title="Оголошення" icon="megaphone">
-          {data.announcements.map((row) => (
-            <Link className="item" to={`/courses/${row.course_id}?tab=announcements`} key={row.id}>
-              <span className="icon-wrap"><Icon name="megaphone" size={20} /></span>
-              <div className="grow"><strong>{row.title}</strong><span className="muted small">{row.course_title}</span></div>
-            </Link>
-          ))}
+          {data.announcements.map((row) => <Result key={row.id} to={`/courses/${row.course_id}?tab=announcements`} icon="megaphone" title={row.title} subtitle={row.course_title} />)}
         </Group>
       )}
       {data.messages.length > 0 && (
         <Group title="Обговорення" icon="chat">
-          {data.messages.map((row) => (
-            <Link className="item" to={`/courses/${row.course_id}?tab=discussion`} key={row.id}>
-              <span className="icon-wrap"><Icon name="chat" size={20} /></span>
-              <div className="grow"><strong className="clip">{row.text}</strong><span className="muted small">{row.author} · {row.course_title}</span></div>
-            </Link>
-          ))}
+          {data.messages.map((row) => <Result key={row.id} to={`/courses/${row.course_id}?tab=discussion`} icon="chat" title={row.text} subtitle={`${row.author} · ${row.course_title}`} />)}
         </Group>
       )}
       {data.spaces.length > 0 && (
         <Group title="Навчальні простори" icon="users">
-          {data.spaces.map((row) => (
-            <Link className="item" to={`/spaces/${row.id}`} key={row.id}>
-              <span className="icon-wrap"><Icon name="users" size={20} /></span>
-              <div className="grow"><strong>{row.title}</strong><span className="muted small">{row.topic}</span></div>
-            </Link>
-          ))}
+          {data.spaces.map((row) => <Result key={row.id} to={`/spaces/${row.id}`} icon="users" title={row.title} subtitle={row.topic} />)}
         </Group>
       )}
       {data.people.length > 0 && (

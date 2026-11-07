@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { api, timeUntil } from '../api.js'
-import { Empty, Icon, Loading, Modal, ProgressBar, useToast } from '../components/ui.jsx'
+import { api, fmt } from '../api.js'
+import { Empty, Icon, Loading, Modal, ProgressBar } from '../components/ui.jsx'
 
 function NewCard({ onClose, onSaved }) {
   const [front, setFront] = useState('')
   const [back, setBack] = useState('')
-  const toast = useToast()
 
   async function save(event) {
     event.preventDefault()
     await api('/flashcards', { method: 'POST', body: { front, back } })
-    toast('Картку додано')
     onSaved()
     onClose()
   }
@@ -21,11 +18,11 @@ function NewCard({ onClose, onSaved }) {
       <form onSubmit={save} className="stack">
         <label className="field">
           <span className="label">Питання</span>
-          <textarea className="textarea" style={{ minHeight: 70 }} value={front} onChange={(e) => setFront(e.target.value)} autoFocus required />
+          <textarea className="textarea" value={front} onChange={(e) => setFront(e.target.value)} autoFocus required />
         </label>
         <label className="field">
           <span className="label">Відповідь</span>
-          <textarea className="textarea" style={{ minHeight: 70 }} value={back} onChange={(e) => setBack(e.target.value)} required />
+          <textarea className="textarea" value={back} onChange={(e) => setBack(e.target.value)} required />
         </label>
         <div className="modal-foot">
           <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
@@ -71,9 +68,8 @@ function Review({ cards, onDone }) {
         <p className="front">{card.front}</p>
         {shown && <p className="back">{card.back}</p>}
       </div>
-      {!shown ? (
-        <button className="btn block" onClick={() => setShown(true)}>Показати відповідь</button>
-      ) : (
+      {!shown && <button className="btn block" onClick={() => setShown(true)}>Показати відповідь</button>}
+      {shown && (
         <div className="row">
           <button className="btn secondary block" onClick={() => answer(false)}>Не знав(ла)</button>
           <button className="btn block" onClick={() => answer(true)}>Знав(ла)</button>
@@ -88,11 +84,13 @@ export default function Flashcards() {
   const [reviewing, setReviewing] = useState(null)
   const [adding, setAdding] = useState(false)
 
-  function load() {
-    api('/flashcards').then(setData)
-  }
+  const load = () => api('/flashcards').then(setData)
+  useEffect(() => { load() }, [])
 
-  useEffect(load, [])
+  async function remove(card) {
+    await api(`/flashcards/${card.id}`, { method: 'DELETE' })
+    load()
+  }
 
   if (!data) return <Loading />
   const due = data.cards.filter((card) => card.is_due)
@@ -100,27 +98,27 @@ export default function Flashcards() {
   if (reviewing) {
     return (
       <>
-        <div className="page-head"><div><h1>Повторення</h1></div></div>
+        <div className="page-head"><h1>Повторення</h1></div>
         <Review cards={reviewing} onDone={() => { setReviewing(null); load() }} />
       </>
     )
   }
 
+  const tiles = [['cards', data.cards.length, 'Карток у колоді'], ['clock', due.length, 'Час повторити'], ['award', data.cards.filter((card) => card.box >= 3).length, 'Добре знаєте']]
+
   return (
     <>
       <div className="page-head">
-        <div>
-          <h1>Картки</h1>
-        </div>
+        <h1>Картки</h1>
         <div className="row">
           <button className="btn secondary" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Нова картка</button>
           <button className="btn" disabled={due.length === 0} onClick={() => setReviewing(due)}><Icon name="cards" size={16} />Повторити: {due.length}</button>
         </div>
       </div>
       <div className="grid three">
-        <div className="card tile"><span className="icon-wrap"><Icon name="cards" /></span><div><strong>{data.cards.length}</strong><span className="muted small">Карток у колоді</span></div></div>
-        <div className="card tile"><span className="icon-wrap"><Icon name="clock" /></span><div><strong>{due.length}</strong><span className="muted small">Час повторити</span></div></div>
-        <div className="card tile"><span className="icon-wrap"><Icon name="award" /></span><div><strong>{data.cards.filter((card) => card.box >= 3).length}</strong><span className="muted small">Добре знаєте</span></div></div>
+        {tiles.map(([icon, value, label]) => (
+          <div className="card tile" key={label}><span className="icon-wrap"><Icon name={icon} /></span><div><strong>{value}</strong><span className="muted small">{label}</span></div></div>
+        ))}
       </div>
       <div className="section">
         <div className="section-head"><h2>Усі картки</h2></div>
@@ -129,11 +127,11 @@ export default function Flashcards() {
           <div className="item" key={card.id}>
             <div className="grow">
               <strong>{card.front}</strong>
-              <span className="muted small">{card.back}{card.material_title ? ` · ${card.material_title}` : ''}</span>
+              <span className="muted small">{card.back}{card.material_title && ` · ${card.material_title}`}</span>
             </div>
             <div className="side">
-              <span className={card.is_due ? 'badge warn' : 'badge'}>{card.is_due ? 'Час повторити' : `Через ${timeUntil(card.due)}`}</span>
-              <button className="icon-btn" aria-label="Видалити картку" onClick={async () => { await api(`/flashcards/${card.id}`, { method: 'DELETE' }); load() }}><Icon name="trash" size={16} /></button>
+              <span className={card.is_due ? 'badge warn' : 'badge'}>{card.is_due ? 'Час повторити' : `Повторити ${fmt(card.due)}`}</span>
+              <button className="icon-btn" title="Видалити картку" onClick={() => remove(card)}><Icon name="trash" size={16} /></button>
             </div>
           </div>
         ))}

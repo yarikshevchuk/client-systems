@@ -1,24 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, download, timeAgo } from '../api.js'
-import { useLiveEvents } from '../live.jsx'
-import { Avatar, Confirm, Empty, Icon, Loading, Select, Tabs, useToast } from '../components/ui.jsx'
+import { useLive } from '../live.js'
+import { Avatar, Choice, Empty, Icon, Loading } from '../components/ui.jsx'
 
 const COLUMNS = [['todo', 'Треба зробити'], ['doing', 'У роботі'], ['done', 'Готово']]
+const PREVIOUS = { doing: 'todo', done: 'doing' }
+const NEXT = { todo: 'doing', doing: 'done' }
 
 function Board({ spaceId, tasks, members, reload }) {
   const [title, setTitle] = useState('')
-  const [assignee, setAssignee] = useState(null)
-  const toast = useToast()
-  const people = [{ value: '', label: 'Без виконавця' }, ...members.map((m) => ({ value: m.id, label: m.name }))]
+  const [assignee, setAssignee] = useState('')
 
   async function call(path, options) {
-    try {
-      await api(path, options)
-      reload()
-    } catch (err) {
-      toast(err.message, 'bad')
-    }
+    await api(path, options)
+    reload()
   }
 
   async function add(event) {
@@ -27,11 +23,16 @@ function Board({ spaceId, tasks, members, reload }) {
     setTitle('')
   }
 
+  const move = (task, status) => call(`/space-tasks/${task.id}`, { method: 'PUT', body: { status } })
+
   return (
     <>
       <form className="task-form" onSubmit={add}>
         <input className="input" placeholder="Нова задача команди…" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <div style={{ minWidth: 180 }}><Select value={assignee ?? ''} onChange={(value) => setAssignee(value || null)} options={people} /></div>
+        <select className="input" style={{ maxWidth: 200 }} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+          <option value="">Без виконавця</option>
+          {members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+        </select>
         <button className="btn" disabled={!title.trim()}><Icon name="plus" size={16} />Додати</button>
       </form>
       <div className="board">
@@ -46,8 +47,8 @@ function Board({ spaceId, tasks, members, reload }) {
                   <div className="row between">
                     <span className="muted small">{task.assignee || 'Без виконавця'}</span>
                     <div className="row" style={{ gap: 2 }}>
-                      {status !== 'todo' && <button className="icon-btn" title="Назад" onClick={() => call(`/space-tasks/${task.id}`, { method: 'PUT', body: { status: status === 'done' ? 'doing' : 'todo' } })}><Icon name="left" size={16} /></button>}
-                      {status !== 'done' && <button className="icon-btn" title="Далі" onClick={() => call(`/space-tasks/${task.id}`, { method: 'PUT', body: { status: status === 'todo' ? 'doing' : 'done' } })}><Icon name="right" size={16} /></button>}
+                      {PREVIOUS[status] && <button className="icon-btn" title="Назад" onClick={() => move(task, PREVIOUS[status])}><Icon name="left" size={16} /></button>}
+                      {NEXT[status] && <button className="icon-btn" title="Далі" onClick={() => move(task, NEXT[status])}><Icon name="right" size={16} /></button>}
                       <button className="icon-btn" title="Видалити" onClick={() => call(`/space-tasks/${task.id}`, { method: 'DELETE' })}><Icon name="trash" size={15} /></button>
                     </div>
                   </div>
@@ -63,28 +64,21 @@ function Board({ spaceId, tasks, members, reload }) {
 }
 
 function Files({ spaceId, files, user, reload }) {
-  const input = useRef(null)
-  const toast = useToast()
-
   async function upload(event) {
-    const file = event.target.files[0]
-    if (!file) return
     const form = new FormData()
-    form.append('file', file)
-    try {
-      await api(`/spaces/${spaceId}/files`, { method: 'POST', body: form })
-      toast('Файл додано')
-      reload()
-    } catch (err) {
-      toast(err.message, 'bad')
-    }
-    event.target.value = ''
+    form.append('file', event.target.files[0])
+    await api(`/spaces/${spaceId}/files`, { method: 'POST', body: form }).catch((err) => alert(err.message))
+    reload()
+  }
+
+  async function remove(file) {
+    await api(`/space-files/${file.id}`, { method: 'DELETE' })
+    reload()
   }
 
   return (
     <>
-      <input ref={input} type="file" hidden onChange={upload} />
-      <button className="btn secondary" onClick={() => input.current.click()}><Icon name="upload" size={16} />Додати файл</button>
+      <label className="btn secondary"><Icon name="upload" size={16} />Додати файл<input type="file" hidden onChange={upload} /></label>
       <div style={{ marginTop: 14 }}>
         {files.length === 0 && <Empty icon="file">Спільних файлів ще немає.</Empty>}
         {files.map((file) => (
@@ -92,10 +86,43 @@ function Files({ spaceId, files, user, reload }) {
             <Icon name="file" size={18} />
             <button className="link-btn grow" onClick={() => download(`/space-files/${file.id}/file`, file.filename)}>{file.filename}</button>
             <span className="muted small">{file.author} · {timeAgo(file.created_at)}</span>
-            {file.user_id === user.id && <button className="icon-btn" aria-label="Видалити файл" onClick={async () => { await api(`/space-files/${file.id}`, { method: 'DELETE' }); reload() }}><Icon name="trash" size={16} /></button>}
+            {file.user_id === user.id && <button className="icon-btn" title="Видалити файл" onClick={() => remove(file)}><Icon name="trash" size={16} /></button>}
           </div>
         ))}
       </div>
+    </>
+  )
+}
+
+function Chat({ spaceId, messages, reload }) {
+  const [text, setText] = useState('')
+
+  async function send(event) {
+    event.preventDefault()
+    await api(`/spaces/${spaceId}/messages`, { method: 'POST', body: { text } })
+    setText('')
+    reload()
+  }
+
+  return (
+    <>
+      <div className="chat">
+        {messages.length === 0 && <Empty icon="chat">Повідомлень ще немає. Почніть розмову.</Empty>}
+        {messages.map((message) => (
+          <div key={message.id} className="msg">
+            <Avatar name={message.author} />
+            <div className="bubble">
+              <div className="head"><strong>{message.author}</strong><span>{timeAgo(message.created_at)}</span></div>
+              <div className="body">{message.text}</div>
+            </div>
+          </div>
+        ))}
+        <div ref={(end) => end?.scrollIntoView({ block: 'nearest' })} />
+      </div>
+      <form className="composer" onSubmit={send}>
+        <input className="input" placeholder="Напишіть у простір…" value={text} onChange={(e) => setText(e.target.value)} />
+        <button type="submit" className="btn" disabled={!text.trim()}><Icon name="send" size={16} />Надіслати</button>
+      </form>
     </>
   )
 }
@@ -104,53 +131,28 @@ export default function Space({ user }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState(null)
-  const [text, setText] = useState('')
-  const [confirm, setConfirm] = useState(false)
   const [error, setError] = useState('')
   const [tab, setTab] = useState('chat')
-  const bottom = useRef(null)
-  const toast = useToast()
 
-  function load() {
-    api(`/spaces/${id}`).then(setData).catch((err) => setError(err.message))
-  }
+  const load = () => api(`/spaces/${id}`).then(setData).catch((err) => setError(err.message))
 
   useEffect(() => {
     setData(null)
     load()
   }, [id])
-  useLiveEvents((event) => {
-    if ((event.type === 'space_message' && event.message.space_id === Number(id)) || (event.type === 'space_changed' && event.space_id === Number(id))) load()
+
+  useLive((event) => {
+    if (event.message?.space_id === Number(id) || event.space_id === Number(id)) load()
   })
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'nearest' })
-  }, [data])
 
-  async function act(path, message) {
-    try {
-      await api(path, { method: 'POST' })
-      if (message) toast(message)
-      load()
-    } catch (err) {
-      toast(err.message, 'bad')
-    }
-  }
-
-  async function send(event) {
-    event.preventDefault()
-    if (!text.trim()) return
-    try {
-      await api(`/spaces/${id}/messages`, { method: 'POST', body: { text } })
-      setText('')
-      load()
-    } catch (err) {
-      toast(err.message, 'bad')
-    }
+  async function post(path) {
+    await api(path, { method: 'POST' })
+    load()
   }
 
   async function remove() {
+    if (!confirm('Видалити цей простір разом з усіма повідомленнями?')) return
     await api(`/spaces/${id}`, { method: 'DELETE' })
-    toast('Простір видалено')
     navigate('/spaces')
   }
 
@@ -172,39 +174,21 @@ export default function Space({ user }) {
           {space.description && <p style={{ marginTop: 8 }}>{space.description}</p>}
         </div>
         <div className="row">
-          {joined && !owner && <button className="btn secondary" onClick={() => act(`/spaces/${id}/leave`, 'Ви залишили простір')}>Залишити</button>}
-          {!joined && <button className="btn" onClick={() => act(`/spaces/${id}/join`, 'Ви приєдналися до простору')}><Icon name="plus" size={16} />Приєднатися</button>}
-          {(owner || user.role === 'admin') && <button className="btn secondary" onClick={() => setConfirm(true)}><Icon name="trash" size={16} />Видалити</button>}
+          {joined && !owner && <button className="btn secondary" onClick={() => post(`/spaces/${id}/leave`)}>Залишити</button>}
+          {!joined && <button className="btn" onClick={() => post(`/spaces/${id}/join`)}><Icon name="plus" size={16} />Приєднатися</button>}
+          {(owner || user.role === 'admin') && <button className="btn secondary" onClick={remove}><Icon name="trash" size={16} />Видалити</button>}
         </div>
       </div>
+
       <div className="space-layout">
         <div className="card">
-          {!joined ? (
-            <Empty icon="users">Приєднайтеся до простору, щоб бачити чат, задачі й файли.</Empty>
-          ) : (
+          {!joined && <Empty icon="users">Приєднайтеся до простору, щоб бачити чат, задачі й файли.</Empty>}
+          {joined && (
             <>
-              <Tabs value={tab} onChange={setTab} options={[{ value: 'chat', label: 'Чат' }, { value: 'tasks', label: `Задачі (${tasks.length})` }, { value: 'files', label: `Файли (${files.length})` }]} />
+              <Choice className="tabs" value={tab} onChange={setTab} options={[['chat', 'Чат'], ['tasks', `Задачі (${tasks.length})`], ['files', `Файли (${files.length})`]]} />
+              {tab === 'chat' && <Chat spaceId={space.id} messages={messages} reload={load} />}
               {tab === 'tasks' && <Board spaceId={space.id} tasks={tasks} members={members} reload={load} />}
               {tab === 'files' && <Files spaceId={space.id} files={files} user={user} reload={load} />}
-              {tab === 'chat' && <>
-              <div className="chat">
-                {messages.length === 0 && <Empty icon="chat">Повідомлень ще немає. Почніть розмову.</Empty>}
-                {messages.map((message) => (
-                  <div key={message.id} className="msg">
-                    <Avatar name={message.author} />
-                    <div className="bubble">
-                      <div className="head"><strong>{message.author}</strong><span>{timeAgo(message.created_at)}</span></div>
-                      <div className="body">{message.text}</div>
-                    </div>
-                  </div>
-                ))}
-                <div ref={bottom} />
-              </div>
-              <form className="composer" onSubmit={send}>
-                <input className="input" placeholder="Напишіть у простір…" value={text} onChange={(e) => setText(e.target.value)} />
-                <button type="submit" className="btn" disabled={!text.trim()}><Icon name="send" size={16} />Надіслати</button>
-              </form>
-              </>}
             </>
           )}
         </div>
@@ -225,7 +209,6 @@ export default function Space({ user }) {
           ))}
         </div>
       </div>
-      {confirm && <Confirm title="Видалити простір" text="Видалити цей простір разом з усіма повідомленнями?" onConfirm={remove} onClose={() => setConfirm(false)} />}
     </>
   )
 }

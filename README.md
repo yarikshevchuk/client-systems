@@ -69,4 +69,4 @@ export AI_DAILY_LIMIT=30            # запитів на користувача
 ## Будова коду
 
 - `backend/`: по одному модулю на область (`courses`, `submissions`, `announcements`, `discussion`, `dm`, `spaces`, `study`, `ai`, `notifications`, `schedule`, `search`, `admin`), `db.py` (схема й три функції `select`/`one`/`execute`), `live.py` (WebSocket-хаб подій), `access.py` (права).
-- `frontend/src/`: `pages/` (екрани), `components/` (спільні блоки), `components/ui.jsx` (власні елементи: список, календар, завантаження файлу, перемикачі, модальні вікна, меню, повідомлення), `live.jsx` (одне WebSocket-з'єднання, підписки на події), `api.js`.
+- `frontend/src/`: `pages/` (екрани), `components/` (частини екранів), `components/ui.jsx` (іконки, аватар, модальне вікно, перемикач вкладок, смужка прогресу), `api.js` (запити до бекенду, формат дат, збереження CSV), `live.js` (одне WebSocket-з'єднання і хук `useLive` для подій у реальному часі). Без власних віджетів і контекстів: випадаючі списки, дата, числа, файли й перемикачі — стандартні елементи браузера (`select`, `datetime-local`, `number`, `file`, `checkbox`), підтвердження видалення — `confirm`.

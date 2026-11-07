@@ -1,14 +1,13 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { api, getToken, roleName, setToken } from './api.js'
-import { Avatar, colorFor, Icon, Loading } from './components/ui.jsx'
-import AgentDrawer from './components/AgentDrawer.jsx'
-import { AgentProvider } from './agent.jsx'
+import { connectLive, disconnectLive, useLive } from './live.js'
+import { Avatar, colorFor, Icon } from './components/ui.jsx'
 import Notifications from './components/Notifications.jsx'
-import { LiveProvider, useLive } from './live.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Course from './pages/Course.jsx'
+import Settings from './pages/Settings.jsx'
 import Material from './pages/Material.jsx'
 import Messages from './pages/Messages.jsx'
 import Spaces from './pages/Spaces.jsx'
@@ -17,79 +16,49 @@ import Calendar from './pages/Calendar.jsx'
 import Flashcards from './pages/Flashcards.jsx'
 import Search from './pages/Search.jsx'
 import Profile from './pages/Profile.jsx'
-
-const Settings = lazy(() => import('./pages/Settings.jsx'))
-const Admin = lazy(() => import('./pages/Admin.jsx'))
-
-function Brand() {
-  return (
-    <Link to="/" className="brand">
-      <span className="logo-mark">V</span>
-      <span className="brand-text">VNS<small>Навчальна платформа</small></span>
-    </Link>
-  )
-}
-
-function SearchBox() {
-  const navigate = useNavigate()
-  const [text, setText] = useState('')
-
-  return (
-    <form
-      className="searchbox"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (text.trim()) navigate(`/search?q=${encodeURIComponent(text.trim())}`)
-      }}
-    >
-      <Icon name="search" size={16} />
-      <input placeholder="Пошук курсів, матеріалів, повідомлень…" value={text} onChange={(e) => setText(e.target.value)} />
-    </form>
-  )
-}
-
-function ThemeButton() {
-  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
-
-  function toggle() {
-    const next = !dark
-    document.documentElement.dataset.theme = next ? 'dark' : 'light'
-    try { localStorage.setItem('theme', next ? 'dark' : 'light') } catch { /* private mode */ }
-    setDark(next)
-  }
-
-  return <button className="icon-btn" onClick={toggle} aria-label={dark ? 'Світла тема' : 'Темна тема'} title={dark ? 'Світла тема' : 'Темна тема'}><Icon name={dark ? 'sun' : 'moon'} /></button>
-}
+import Admin from './pages/Admin.jsx'
 
 function Shell({ user, setUser, logout }) {
-  const [courses, setCourses] = useState([])
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [dueCards, setDueCards] = useState(0)
   const location = useLocation()
-  const { counters } = useLive()
+  const navigate = useNavigate()
+  const [courses, setCourses] = useState([])
+  const [counters, setCounters] = useState({ notifications: 0, messages: 0 })
+  const [dueCards, setDueCards] = useState(0)
+  const [query, setQuery] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [dark, setDark] = useState(document.documentElement.dataset.theme === 'dark')
   const [online, setOnline] = useState(navigator.onLine)
 
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine)
-    window.addEventListener('online', update)
-    window.addEventListener('offline', update)
-    return () => {
-      window.removeEventListener('online', update)
-      window.removeEventListener('offline', update)
-    }
-  }, [])
-
-  const loadCourses = useCallback(() => api('/courses').then(setCourses), [])
+  const loadCourses = () => api('/courses').then(setCourses)
+  const loadCounters = () => api('/me/counters').then(setCounters)
 
   useEffect(() => {
     loadCourses()
-  }, [loadCourses])
-
-  useEffect(() => setMenuOpen(false), [location.pathname])
+    window.addEventListener('online', () => setOnline(true))
+    window.addEventListener('offline', () => setOnline(false))
+  }, [])
 
   useEffect(() => {
+    setMenuOpen(false)
+    loadCounters()
     if (user.role === 'student') api('/flashcards').then((data) => setDueCards(data.due))
-  }, [location.pathname, user.role])
+  }, [location.pathname])
+
+  useLive((event) => {
+    if (event.type === 'notification' || event.type === 'dm') loadCounters()
+  })
+
+  function toggleTheme() {
+    const theme = dark ? 'light' : 'dark'
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('theme', theme)
+    setDark(!dark)
+  }
+
+  function search(event) {
+    event.preventDefault()
+    if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`)
+  }
 
   const link = ({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')
 
@@ -97,16 +66,23 @@ function Shell({ user, setUser, logout }) {
     <div className="shell">
       <header className="topbar">
         <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Відкрити меню"><Icon name="menu" /></button>
-        <Brand />
-        <SearchBox />
-        <Notifications />
-        <ThemeButton />
+        <Link to="/" className="brand">
+          <span className="logo-mark">V</span>
+          <span className="brand-text">VNS<small>Навчальна платформа</small></span>
+        </Link>
+        <form className="searchbox" onSubmit={search}>
+          <Icon name="search" size={16} />
+          <input placeholder="Пошук курсів, матеріалів, повідомлень…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </form>
+        <Notifications count={counters.notifications} onRead={loadCounters} />
+        <button className="icon-btn" onClick={toggleTheme} title={dark ? 'Світла тема' : 'Темна тема'}><Icon name={dark ? 'sun' : 'moon'} /></button>
         <Link to="/profile" className="me">
           <Avatar name={user.name} size={30} />
           <span className="who"><strong>{user.name}</strong><span>{roleName(user.role)}</span></span>
         </Link>
-        <button className="icon-btn" onClick={logout} aria-label="Вийти" title="Вийти"><Icon name="logout" /></button>
+        <button className="icon-btn" onClick={logout} title="Вийти"><Icon name="logout" /></button>
       </header>
+
       <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
         <nav className="nav">
           <NavLink to="/" end className={link}><Icon name="home" /><span className="text">Головна</span></NavLink>
@@ -133,30 +109,27 @@ function Shell({ user, setUser, logout }) {
         </nav>
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
+
       <div className="content">
         <main>
           {!online && <div className="offline-bar">Немає з’єднання з інтернетом. Показано збережені дані, зміни недоступні.</div>}
-          <Suspense fallback={<Loading />}>
-            <Routes>
-              <Route path="/" element={<Dashboard user={user} onCoursesChanged={loadCourses} />} />
-              <Route path="/courses/:id" element={<Course user={user} />} />
-              <Route path="/courses/:id/settings" element={<Settings user={user} onCoursesChanged={loadCourses} />} />
-              <Route path="/materials/:id" element={<Material user={user} />} />
-              <Route path="/messages" element={<Messages user={user} />} />
-              <Route path="/messages/:otherId" element={<Messages user={user} />} />
-              <Route path="/spaces" element={<Spaces user={user} />} />
-              <Route path="/spaces/:id" element={<Space user={user} />} />
-              <Route path="/calendar" element={<Calendar user={user} />} />
-              <Route path="/flashcards" element={<Flashcards />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/profile" element={<Profile user={user} onChanged={setUser} />} />
-              <Route path="/admin" element={<Admin user={user} />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </Suspense>
+          <Routes>
+            <Route path="/" element={<Dashboard user={user} onCoursesChanged={loadCourses} />} />
+            <Route path="/courses/:id" element={<Course user={user} />} />
+            <Route path="/courses/:id/settings" element={<Settings user={user} onCoursesChanged={loadCourses} />} />
+            <Route path="/materials/:id" element={<Material user={user} />} />
+            <Route path="/messages/:otherId?" element={<Messages user={user} onRead={loadCounters} />} />
+            <Route path="/spaces" element={<Spaces />} />
+            <Route path="/spaces/:id" element={<Space user={user} />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/flashcards" element={<Flashcards />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/profile" element={<Profile user={user} onChanged={setUser} />} />
+            <Route path="/admin" element={<Admin user={user} />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
         </main>
       </div>
-      <AgentDrawer />
     </div>
   )
 }
@@ -167,18 +140,18 @@ export default function App() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!getToken()) {
-      setReady(true)
-      return
-    }
-    api('/me')
-      .then(setUser)
-      .catch(() => setToken(null))
-      .finally(() => setReady(true))
+    if (!getToken()) return setReady(true)
+    api('/me').then(setUser).catch(() => setToken(null)).finally(() => setReady(true))
   }, [])
 
+  useEffect(() => {
+    if (!user) return
+    connectLive()
+    return disconnectLive
+  }, [user?.id])
+
   function logout() {
-    if ('caches' in window) caches.delete('vns-data-v1')
+    if (window.caches) caches.delete('vns-data-v1')
     setToken(null)
     setUser(null)
     navigate('/')
@@ -186,12 +159,5 @@ export default function App() {
 
   if (!ready) return <p className="center">Завантаження…</p>
   if (!user) return <Login onLogin={setUser} />
-
-  return (
-    <LiveProvider user={user}>
-      <AgentProvider>
-        <Shell user={user} setUser={setUser} logout={logout} />
-      </AgentProvider>
-    </LiveProvider>
-  )
+  return <Shell user={user} setUser={setUser} logout={logout} />
 }

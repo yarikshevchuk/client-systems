@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, timeAgo } from '../api.js'
-import { useAgent } from '../agent.jsx'
 import { Icon } from './ui.jsx'
 
 function Quiz({ quiz }) {
   const [picked, setPicked] = useState({})
-  const done = Object.keys(picked).length === quiz.length
   const score = quiz.filter((item, index) => picked[index] === item.answer).length
 
   return (
@@ -16,10 +14,12 @@ function Quiz({ quiz }) {
           <p>{index + 1}. {item.question}</p>
           <div className="quiz-options">
             {item.options.map((option, optionIndex) => {
-              const chosen = picked[index]
-              const state = chosen === undefined ? '' : optionIndex === item.answer ? 'right' : optionIndex === chosen ? 'wrong' : ''
+              const answered = picked[index] !== undefined
+              let state = ''
+              if (answered && optionIndex === item.answer) state = 'right'
+              else if (answered && optionIndex === picked[index]) state = 'wrong'
               return (
-                <button key={optionIndex} className={`quiz-option ${state}`} disabled={chosen !== undefined} onClick={() => setPicked({ ...picked, [index]: optionIndex })}>
+                <button key={optionIndex} className={`quiz-option ${state}`} disabled={answered} onClick={() => setPicked({ ...picked, [index]: optionIndex })}>
                   {option}
                 </button>
               )
@@ -27,22 +27,21 @@ function Quiz({ quiz }) {
           </div>
         </div>
       ))}
-      {done && <p className="quiz-score">Результат: {score} з {quiz.length}</p>}
+      {Object.keys(picked).length === quiz.length && <p className="quiz-score">Результат: {score} з {quiz.length}</p>}
     </div>
   )
 }
 
 function Message({ message }) {
-  const mine = message.role === 'user'
   return (
-    <div className={mine ? 'agent-msg mine' : 'agent-msg'}>
+    <div className={message.role === 'user' ? 'agent-msg mine' : 'agent-msg'}>
       <div className="agent-bubble">
         <div className="agent-text">{message.text}</div>
-        {message.extra && message.extra.quiz && <Quiz quiz={message.extra.quiz} />}
-        {message.extra && message.extra.link && <Link to={message.extra.link} className="btn sm secondary" style={{ marginTop: 8 }}>Відкрити картки</Link>}
-        {message.sources && message.sources.length > 0 && (
+        {message.extra?.quiz && <Quiz quiz={message.extra.quiz} />}
+        {message.extra?.link && <Link to={message.extra.link} className="btn sm secondary" style={{ marginTop: 8 }}>Відкрити картки</Link>}
+        {message.sources?.length > 0 && (
           <div className="agent-sources">
-            {message.sources.map((source, index) => <Link key={`${source.id}-${index}`} to={`/materials/${source.id}`} className="source-chip">{source.title}</Link>)}
+            {message.sources.map((source, index) => <Link key={index} to={`/materials/${source.id}`} className="source-chip">{source.title}</Link>)}
           </div>
         )}
       </div>
@@ -51,40 +50,38 @@ function Message({ message }) {
   )
 }
 
-export default function AgentDrawer() {
-  const { ctx, open, setOpen } = useAgent()
+const SHORTCUTS = [
+  ['Конспект цієї лекції', 'Зроби конспект', true],
+  ['Тест за матеріалом', 'Перевір мене тестом', true],
+  ['Зробити картки', 'Зроби картки', true],
+  ['Мої дедлайни', 'Які в мене дедлайни?', false],
+  ['Мої оцінки', 'Яка в мене оцінка?', false],
+]
+
+export default function AgentDrawer({ courseId, materialId = null }) {
+  const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
-  const bottom = useRef(null)
-  const courseId = ctx && ctx.courseId
+
+  const load = () => api(`/courses/${courseId}/agent`).then(setMessages)
 
   useEffect(() => {
-    setMessages([])
-    if (courseId && open) api(`/courses/${courseId}/agent`).then(setMessages)
-  }, [courseId, open])
-
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' })
-  }, [messages, busy, open])
-
-  if (!ctx) return null
+    if (open) load()
+  }, [open, courseId])
 
   async function send(message) {
-    const value = (message ?? text).trim()
-    if (!value || busy) return
+    if (!message.trim() || busy) return
     setText('')
     setBusy(true)
-    setMessages((current) => [...current, { id: 'tmp', role: 'user', text: value, sources: [], extra: {}, created_at: new Date().toISOString() }])
+    setMessages([...messages, { role: 'user', text: message, created_at: new Date() }])
     try {
-      const reply = await api(`/courses/${courseId}/agent`, { method: 'POST', body: { message: value, material_id: ctx.materialId } })
-      setMessages(await api(`/courses/${courseId}/agent`))
-      return reply
+      await api(`/courses/${courseId}/agent`, { method: 'POST', body: { message, material_id: materialId } })
+      await load()
     } catch (err) {
-      setMessages((current) => [...current, { id: 'err', role: 'assistant', text: err.message, sources: [], extra: {}, created_at: new Date().toISOString() }])
-    } finally {
-      setBusy(false)
+      setMessages([...messages, { role: 'assistant', text: err.message, created_at: new Date() }])
     }
+    setBusy(false)
   }
 
   async function clear() {
@@ -92,49 +89,40 @@ export default function AgentDrawer() {
     setMessages([])
   }
 
-  const chips = [
-    ctx.materialId && ['Конспект цієї лекції', 'Зроби конспект'],
-    ctx.materialId && ['Тест за матеріалом', 'Перевір мене тестом'],
-    ctx.materialId && ['Зробити картки', 'Зроби картки'],
-    ['Мої дедлайни', 'Які в мене дедлайни?'],
-    ['Мої оцінки', 'Яка в мене оцінка?'],
-  ].filter(Boolean)
+  if (!open) return <button className="agent-fab" onClick={() => setOpen(true)}><Icon name="sparkle" size={18} />AI-помічник</button>
 
   return (
-    <>
-      {!open && <button className="agent-fab" onClick={() => setOpen(true)}><Icon name="sparkle" size={18} />AI-помічник</button>}
-      {open && (
-        <aside className="agent-drawer" aria-label="AI-помічник">
-          <header className="agent-head">
-            <div>
-              <strong>AI-помічник</strong>
-              <div className="muted small">Відповідає за матеріалами курсу, записами лекцій і вашими даними</div>
-            </div>
-            <div className="row-actions">
-              {messages.length > 0 && <button className="icon-btn" title="Очистити розмову" onClick={clear}><Icon name="trash" size={16} /></button>}
-              <button className="icon-btn" title="Закрити" onClick={() => setOpen(false)}><Icon name="x" size={18} /></button>
-            </div>
-          </header>
-          <div className="agent-body">
-            {messages.length === 0 && (
-              <div className="agent-empty">
-                <p><b>Чим допомогти?</b></p>
-                <p className="muted">Спитайте про лекцію, попросіть конспект, тест або картки. Я також знаю ваші дедлайни й оцінки.</p>
-              </div>
-            )}
-            {messages.map((message, index) => <Message key={`${message.id}-${index}`} message={message} />)}
-            {busy && <div className="agent-msg"><div className="agent-bubble muted">Думаю…</div></div>}
-            <div ref={bottom} />
+    <aside className="agent-drawer" aria-label="AI-помічник">
+      <header className="agent-head">
+        <div>
+          <strong>AI-помічник</strong>
+          <div className="muted small">Відповідає за матеріалами курсу, записами лекцій і вашими даними</div>
+        </div>
+        <div className="row-actions">
+          {messages.length > 0 && <button className="icon-btn" title="Очистити розмову" onClick={clear}><Icon name="trash" size={16} /></button>}
+          <button className="icon-btn" title="Закрити" onClick={() => setOpen(false)}><Icon name="x" size={18} /></button>
+        </div>
+      </header>
+      <div className="agent-body">
+        {messages.length === 0 && (
+          <div className="agent-empty">
+            <p><b>Чим допомогти?</b></p>
+            <p className="muted">Спитайте про лекцію, попросіть конспект, тест або картки. Я також знаю ваші дедлайни й оцінки.</p>
           </div>
-          <div className="chips">
-            {chips.map(([label, message]) => <button key={label} className="chip-btn" disabled={busy} onClick={() => send(message)}>{label}</button>)}
-          </div>
-          <form className="agent-form" onSubmit={(event) => { event.preventDefault(); send() }}>
-            <input className="input" placeholder="Запитайте про цей курс…" value={text} onChange={(e) => setText(e.target.value)} />
-            <button type="submit" className="btn" disabled={!text.trim() || busy}><Icon name="send" size={16} /></button>
-          </form>
-        </aside>
-      )}
-    </>
+        )}
+        {messages.map((message, index) => <Message key={index} message={message} />)}
+        {busy && <div className="agent-msg"><div className="agent-bubble muted">Думаю…</div></div>}
+        <div ref={(end) => end?.scrollIntoView({ block: 'nearest' })} />
+      </div>
+      <div className="chips">
+        {SHORTCUTS.filter(([, , needsMaterial]) => materialId || !needsMaterial).map(([label, message]) => (
+          <button key={label} className="chip-btn" disabled={busy} onClick={() => send(message)}>{label}</button>
+        ))}
+      </div>
+      <form className="agent-form" onSubmit={(event) => { event.preventDefault(); send(text) }}>
+        <input className="input" placeholder="Запитайте про цей курс…" value={text} onChange={(e) => setText(e.target.value)} />
+        <button type="submit" className="btn" disabled={!text.trim() || busy}><Icon name="send" size={16} /></button>
+      </form>
+    </aside>
   )
 }

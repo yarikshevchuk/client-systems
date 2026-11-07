@@ -1,30 +1,24 @@
 import { useState } from 'react'
 import { api } from '../api.js'
-import { DateTimeField, Modal, Segmented, Stepper, useToast } from './ui.jsx'
-
-const toInput = (value) => (value ? String(value).slice(0, 16) : '')
+import { Choice, Modal } from './ui.jsx'
 
 export default function MaterialForm({ topicId, material, onSaved, onClose }) {
-  const [kind, setKind] = useState(material ? material.kind : 'lecture')
-  const [title, setTitle] = useState(material ? material.title : '')
-  const [content, setContent] = useState(material ? material.content : '')
-  const [deadline, setDeadline] = useState(material ? toInput(material.deadline) : '')
-  const [maxPoints, setMaxPoints] = useState(material && material.max_points ? material.max_points : 10)
+  const [form, setForm] = useState({
+    kind: material?.kind || 'lecture',
+    title: material?.title || '',
+    content: material?.content || '',
+    deadline: material?.deadline?.slice(0, 16) || '',
+    max_points: material?.max_points || 10,
+  })
   const [error, setError] = useState('')
-  const toast = useToast()
+  const set = (key) => (event) => setForm({ ...form, [key]: event.target.value })
 
   async function save(event) {
     event.preventDefault()
-    setError('')
-    if (kind === 'lab' && !deadline) {
-      setError('Оберіть дедлайн для лабораторної')
-      return
-    }
-    const body = { title, kind, content, deadline: deadline || null, max_points: maxPoints }
+    const body = { ...form, deadline: form.deadline || null, max_points: Number(form.max_points) }
     try {
       if (material) await api(`/materials/${material.id}`, { method: 'PUT', body })
       else await api(`/topics/${topicId}/materials`, { method: 'POST', body })
-      toast(material ? 'Матеріал збережено' : 'Матеріал додано')
       onSaved()
       onClose()
     } catch (err) {
@@ -37,26 +31,26 @@ export default function MaterialForm({ topicId, material, onSaved, onClose }) {
       <form onSubmit={save} className="stack">
         <div className="field">
           <span className="label">Тип</span>
-          <Segmented value={kind} onChange={setKind} options={[{ value: 'lecture', label: 'Лекція' }, { value: 'lab', label: 'Лабораторна (оцінювана)' }]} />
+          <Choice value={form.kind} onChange={(kind) => setForm({ ...form, kind })} options={[['lecture', 'Лекція'], ['lab', 'Лабораторна (оцінювана)']]} />
         </div>
         <label className="field">
           <span className="label">Назва</span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="наприклад, Лекція 4. Бінарні дерева" autoFocus required />
+          <input className="input" value={form.title} onChange={set('title')} placeholder="наприклад, Лекція 4. Бінарні дерева" autoFocus required />
         </label>
         <label className="field">
           <span className="label">Текст</span>
-          <textarea className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Текст лекції або завдання лабораторної" />
+          <textarea className="textarea" value={form.content} onChange={set('content')} placeholder="Текст лекції або завдання лабораторної" />
         </label>
-        {kind === 'lab' && (
+        {form.kind === 'lab' && (
           <>
-            <div className="field">
+            <label className="field">
               <span className="label">Дедлайн</span>
-              <DateTimeField value={deadline} onChange={setDeadline} />
-            </div>
-            <div className="field">
+              <input className="input" type="datetime-local" value={form.deadline} onChange={set('deadline')} required />
+            </label>
+            <label className="field">
               <span className="label">Максимум балів</span>
-              <Stepper value={maxPoints} onChange={(value) => setMaxPoints(value === '' ? 1 : value)} min={1} max={100} />
-            </div>
+              <input className="input" type="number" min="1" max="100" value={form.max_points} onChange={set('max_points')} required />
+            </label>
           </>
         )}
         {error && <p className="error">{error}</p>}

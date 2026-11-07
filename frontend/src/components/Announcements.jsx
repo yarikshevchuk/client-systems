@@ -1,24 +1,16 @@
 import { useEffect, useState } from 'react'
 import { api, timeAgo } from '../api.js'
-import { useLiveEvents } from '../live.jsx'
-import { Avatar, Confirm, Empty, Icon, Loading, Menu, Modal, Toggle, useToast } from './ui.jsx'
+import { useLive } from '../live.js'
+import { Avatar, Empty, Icon, Loading, Modal } from './ui.jsx'
 
 function NewAnnouncement({ courseId, onSaved, onClose }) {
   const [form, setForm] = useState({ title: '', body: '', pinned: false })
-  const [error, setError] = useState('')
-  const toast = useToast()
 
   async function save(event) {
     event.preventDefault()
-    setError('')
-    try {
-      await api(`/courses/${courseId}/announcements`, { method: 'POST', body: form })
-      toast('Оголошення опубліковано')
-      onSaved()
-      onClose()
-    } catch (err) {
-      setError(err.message)
-    }
+    await api(`/courses/${courseId}/announcements`, { method: 'POST', body: form })
+    onSaved()
+    onClose()
   }
 
   return (
@@ -32,11 +24,10 @@ function NewAnnouncement({ courseId, onSaved, onClose }) {
           <span className="label">Повідомлення</span>
           <textarea className="textarea" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} required />
         </label>
-        <div className="row between">
-          <span>Закріпити вгорі</span>
-          <Toggle label="Закріпити вгорі" checked={form.pinned} onChange={(pinned) => setForm({ ...form, pinned })} />
-        </div>
-        {error && <p className="error">{error}</p>}
+        <label className="row">
+          <input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} />
+          Закріпити вгорі
+        </label>
         <div className="modal-foot">
           <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
           <button type="submit" className="btn">Опублікувати</button>
@@ -56,8 +47,9 @@ function Readers({ announcement, onClose }) {
   return (
     <Modal title="Хто прочитав" onClose={onClose}>
       {!rows ? <Loading /> : rows.map((row) => (
-        <div className="row between" key={row.id} style={{ padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-          <div className="row"><Avatar name={row.name} size={28} />{row.name}</div>
+        <div className="member-row" key={row.id}>
+          <Avatar name={row.name} size={28} />
+          <span className="grow">{row.name}</span>
           {row.read_at ? <span className="badge ok">Прочитано {timeAgo(row.read_at)}</span> : <span className="badge warn">Не прочитано</span>}
         </div>
       ))}
@@ -67,31 +59,23 @@ function Readers({ announcement, onClose }) {
 
 export default function Announcements({ courseId, canManage }) {
   const [items, setItems] = useState(null)
-  const [dialog, setDialog] = useState(null)
-  const toast = useToast()
+  const [adding, setAdding] = useState(false)
+  const [readers, setReaders] = useState(null)
 
-  function load() {
-    api(`/courses/${courseId}/announcements`).then(setItems)
-  }
+  const load = () => api(`/courses/${courseId}/announcements`).then(setItems)
+  useEffect(() => { load() }, [courseId])
 
-  useEffect(load, [courseId])
-  useLiveEvents((event) => {
+  useLive((event) => {
     if (event.type === 'announcement' && event.course_id === Number(courseId)) load()
   })
 
-  async function markRead(item) {
-    await api(`/announcements/${item.id}/read`, { method: 'POST' })
+  async function call(path, options) {
+    await api(path, options)
     load()
   }
 
-  async function act(path, options, message) {
-    try {
-      await api(path, options)
-      if (message) toast(message)
-      load()
-    } catch (err) {
-      toast(err.message, 'bad')
-    }
+  function remove(item) {
+    if (confirm(`Видалити «${item.title}»?`)) call(`/announcements/${item.id}`, { method: 'DELETE' })
   }
 
   if (!items) return <Loading />
@@ -99,7 +83,7 @@ export default function Announcements({ courseId, canManage }) {
     <>
       {canManage && (
         <div className="row" style={{ marginBottom: 16 }}>
-          <button className="btn" onClick={() => setDialog({ type: 'new' })}><Icon name="megaphone" size={16} />Нове оголошення</button>
+          <button className="btn" onClick={() => setAdding(true)}><Icon name="megaphone" size={16} />Нове оголошення</button>
         </div>
       )}
       {items.length === 0 && <Empty icon="megaphone">Оголошень ще немає.</Empty>}
@@ -112,34 +96,23 @@ export default function Announcements({ courseId, canManage }) {
               <h3>{item.title}</h3>
             </div>
             {canManage && (
-              <Menu
-                items={[
-                  { label: item.pinned ? 'Відкріпити' : 'Закріпити вгорі', onClick: () => act(`/announcements/${item.id}/pin`, { method: 'POST' }) },
-                  { label: 'Видалити', danger: true, onClick: () => setDialog({ type: 'delete', item }) },
-                ]}
-              />
+              <div className="row-actions">
+                <button className="icon-btn" title={item.pinned ? 'Відкріпити' : 'Закріпити вгорі'} onClick={() => call(`/announcements/${item.id}/pin`, { method: 'POST' })}><Icon name="pin" size={16} /></button>
+                <button className="icon-btn" title="Видалити" onClick={() => remove(item)}><Icon name="trash" size={16} /></button>
+              </div>
             )}
           </div>
           <p className="announcement-body">{item.body}</p>
           <div className="row between wrap" style={{ marginTop: 12 }}>
             <span className="row muted small"><Avatar name={item.author} size={22} />{item.author} · {timeAgo(item.created_at)}</span>
-            {canManage ? (
-              <button className="btn secondary sm" onClick={() => setDialog({ type: 'readers', item })}>
-                <Icon name="eye" size={14} />{item.reads - 1} / {item.audience} прочитали
-              </button>
-            ) : item.read ? (
-              <span className="badge ok"><Icon name="check" size={12} />Прочитано</span>
-            ) : (
-              <button className="btn secondary sm" onClick={() => markRead(item)}><Icon name="check" size={14} />Підтвердити, що прочитав(ла)</button>
-            )}
+            {canManage && <button className="btn secondary sm" onClick={() => setReaders(item)}><Icon name="eye" size={14} />{item.reads - 1} / {item.audience} прочитали</button>}
+            {!canManage && item.read && <span className="badge ok"><Icon name="check" size={12} />Прочитано</span>}
+            {!canManage && !item.read && <button className="btn secondary sm" onClick={() => call(`/announcements/${item.id}/read`, { method: 'POST' })}><Icon name="check" size={14} />Підтвердити, що прочитав(ла)</button>}
           </div>
         </article>
       ))}
-      {dialog && dialog.type === 'new' && <NewAnnouncement courseId={courseId} onSaved={load} onClose={() => setDialog(null)} />}
-      {dialog && dialog.type === 'readers' && <Readers announcement={dialog.item} onClose={() => setDialog(null)} />}
-      {dialog && dialog.type === 'delete' && (
-        <Confirm title="Видалити оголошення" text={`Видалити «${dialog.item.title}»?`} onConfirm={() => act(`/announcements/${dialog.item.id}`, { method: 'DELETE' }, 'Оголошення видалено')} onClose={() => setDialog(null)} />
-      )}
+      {adding && <NewAnnouncement courseId={courseId} onSaved={load} onClose={() => setAdding(false)} />}
+      {readers && <Readers announcement={readers} onClose={() => setReaders(null)} />}
     </>
   )
 }

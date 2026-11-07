@@ -1,45 +1,36 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, download, fmt, fmtShort, relative, timeAgo } from '../api.js'
+import { api, deadlineStatus, download, fmt, fmtShort, timeAgo } from '../api.js'
+import AgentDrawer from '../components/AgentDrawer.jsx'
 import AiPanel from '../components/AiPanel.jsx'
 import MaterialForm from '../components/MaterialForm.jsx'
-import Recordings from '../components/Recordings.jsx'
-import { useAgentContext } from '../agent.jsx'
 import Notes from '../components/Notes.jsx'
-import { Avatar, Confirm, FileDrop, Icon, Loading, Modal, Segmented, Stepper, useToast } from '../components/ui.jsx'
+import Recordings from '../components/Recordings.jsx'
+import { Avatar, Choice, Icon, Loading, Modal } from '../components/ui.jsx'
 
-const formatSize = (bytes) => (bytes > 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' МБ' : Math.max(1, Math.round(bytes / 1024)) + ' КБ')
+const fileSize = (bytes) => (bytes > 1048576 ? (bytes / 1048576).toFixed(1) + ' МБ' : Math.ceil(bytes / 1024) + ' КБ')
 
-function Attachments({ material, canManage, reload }) {
-  const input = useRef(null)
-  const toast = useToast()
-
+function Attachments({ material, reload }) {
   async function add(event) {
-    const file = event.target.files[0]
-    if (!file) return
     const form = new FormData()
-    form.append('file', file)
-    try {
-      await api(`/materials/${material.id}/attachments`, { method: 'POST', body: form })
-      toast('Файл прикріплено')
-      reload()
-    } catch (err) {
-      toast(err.message, 'bad')
-    }
-    event.target.value = ''
+    form.append('file', event.target.files[0])
+    await api(`/materials/${material.id}/attachments`, { method: 'POST', body: form }).catch((err) => alert(err.message))
+    reload()
   }
 
-  if (!canManage && material.attachments.length === 0) return null
+  async function remove(file) {
+    await api(`/attachments/${file.id}`, { method: 'DELETE' })
+    reload()
+  }
+
+  if (!material.can_manage && material.attachments.length === 0) return null
   return (
     <div className="card">
       <div className="card-title">
         <span className="icon-wrap"><Icon name="file" size={16} /></span>
         <h2>Файли</h2>
-        {canManage && (
-          <div className="push">
-            <input ref={input} type="file" hidden onChange={add} />
-            <button className="btn secondary sm" onClick={() => input.current.click()}><Icon name="upload" size={14} />Прикріпити файл</button>
-          </div>
+        {material.can_manage && (
+          <label className="btn secondary sm push"><Icon name="upload" size={14} />Прикріпити файл<input type="file" hidden onChange={add} /></label>
         )}
       </div>
       {material.attachments.length === 0 && <p className="muted small">Файлів ще немає.</p>}
@@ -47,12 +38,8 @@ function Attachments({ material, canManage, reload }) {
         <div className="file-row" key={file.id}>
           <Icon name="file" size={18} />
           <button className="link-btn grow" onClick={() => download(`/attachments/${file.id}/file`, file.filename)}>{file.filename}</button>
-          <span className="muted small">{formatSize(file.size)}</span>
-          {canManage && (
-            <button className="icon-btn" aria-label="Видалити файл" onClick={async () => { await api(`/attachments/${file.id}`, { method: 'DELETE' }); reload() }}>
-              <Icon name="trash" size={16} />
-            </button>
-          )}
+          <span className="muted small">{fileSize(file.size)}</span>
+          {material.can_manage && <button className="icon-btn" title="Видалити файл" onClick={() => remove(file)}><Icon name="trash" size={16} /></button>}
         </div>
       ))}
     </div>
@@ -62,23 +49,17 @@ function Attachments({ material, canManage, reload }) {
 function Upload({ material, onDone }) {
   const [file, setFile] = useState(null)
   const [comment, setComment] = useState('')
-  const [showComment, setShowComment] = useState(false)
   const [error, setError] = useState('')
-  const toast = useToast()
   const sub = material.submission
   const graded = sub && sub.grade !== null
 
   async function submit(event) {
     event.preventDefault()
-    setError('')
     const form = new FormData()
     form.append('file', file)
     form.append('comment', comment)
     try {
       await api(`/materials/${material.id}/submit`, { method: 'POST', body: form })
-      setFile(null)
-      setComment('')
-      toast('Роботу здано')
       onDone()
     } catch (err) {
       setError(err.message)
@@ -97,7 +78,7 @@ function Upload({ material, onDone }) {
           <span className="icon-wrap"><Icon name="file" size={20} /></span>
           <div className="grow">
             <button className="link-btn" onClick={() => download(`/submissions/${sub.id}/file`, sub.filename)}><strong>{sub.filename}</strong></button>
-            <span className="muted small">Здано {fmt(sub.submitted_at)}{sub.comment ? ` · “${sub.comment}”` : ''}</span>
+            <span className="muted small">Здано {fmt(sub.submitted_at)}{sub.comment && ` · “${sub.comment}”`}</span>
           </div>
           {graded && <strong style={{ fontSize: '1.3rem' }}>{sub.grade} <span className="muted small">/ {material.max_points}</span></strong>}
         </div>
@@ -110,14 +91,10 @@ function Upload({ material, onDone }) {
       )}
       {!graded && (
         <form onSubmit={submit} className="stack">
-          <FileDrop file={file} onChange={setFile} hint="PDF або DOCX" />
-          {showComment ? (
-            <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Коментар для викладача" autoFocus />
-          ) : (
-            <button type="button" className="link-btn small" onClick={() => setShowComment(true)}>+ Додати коментар</button>
-          )}
+          <input className="input" type="file" accept=".pdf,.docx" onChange={(e) => setFile(e.target.files[0])} required />
+          <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Коментар для викладача (необов'язково)" />
           {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
-          <div><button type="submit" className="btn" disabled={!file}><Icon name="upload" size={16} />{sub ? 'Здати ще раз' : 'Здати'}</button></div>
+          <div><button type="submit" className="btn"><Icon name="upload" size={16} />{sub ? 'Здати ще раз' : 'Здати'}</button></div>
         </form>
       )}
     </div>
@@ -125,17 +102,14 @@ function Upload({ material, onDone }) {
 }
 
 function GradeDialog({ row, material, onSaved, onClose }) {
-  const [grade, setGrade] = useState(row.grade === null ? '' : row.grade)
+  const [grade, setGrade] = useState(row.grade ?? '')
   const [feedback, setFeedback] = useState(row.feedback || '')
   const [error, setError] = useState('')
-  const toast = useToast()
 
   async function save(event) {
     event.preventDefault()
-    setError('')
     try {
       await api(`/submissions/${row.submission_id}/grade`, { method: 'PUT', body: { grade: Number(grade), feedback } })
-      toast('Оцінку збережено')
       onSaved()
       onClose()
     } catch (err) {
@@ -154,18 +128,18 @@ function GradeDialog({ row, material, onSaved, onClose }) {
           </div>
         </div>
         {row.comment && <p className="muted">Коментар студента: «{row.comment}»</p>}
-        <div className="field">
+        <label className="field">
           <span className="label">Оцінка (макс. {material.max_points})</span>
-          <Stepper value={grade} onChange={setGrade} min={0} max={material.max_points} />
-        </div>
+          <input className="input" type="number" min="0" max={material.max_points} value={grade} onChange={(e) => setGrade(e.target.value)} required />
+        </label>
         <label className="field">
           <span className="label">Відгук</span>
-          <textarea className="textarea" style={{ minHeight: 90 }} value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Що вдалося, а що варто покращити" />
+          <textarea className="textarea" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Що вдалося, а що варто покращити" />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
           <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
-          <button type="submit" className="btn" disabled={grade === ''}>Зберегти оцінку</button>
+          <button type="submit" className="btn">Зберегти оцінку</button>
         </div>
       </form>
     </Modal>
@@ -176,11 +150,8 @@ function Submissions({ material }) {
   const [rows, setRows] = useState(null)
   const [grading, setGrading] = useState(null)
 
-  function load() {
-    api(`/materials/${material.id}/submissions`).then(setRows)
-  }
-
-  useEffect(load, [material.id])
+  const load = () => api(`/materials/${material.id}/submissions`).then(setRows)
+  useEffect(() => { load() }, [material.id])
 
   if (!rows) return <Loading />
   return (
@@ -192,9 +163,7 @@ function Submissions({ material }) {
       </div>
       <div className="table-wrap">
         <table>
-          <thead>
-            <tr><th>Студент</th><th>Робота</th><th>Оцінка</th><th /></tr>
-          </thead>
+          <thead><tr><th>Студент</th><th>Робота</th><th>Оцінка</th><th /></tr></thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.student_id}>
@@ -221,13 +190,13 @@ function Submissions({ material }) {
 
 function AskLecturer({ material }) {
   const [text, setText] = useState('')
-  const toast = useToast()
+  const [sent, setSent] = useState(false)
 
   async function send(event) {
     event.preventDefault()
     await api(`/courses/${material.course_id}/messages`, { method: 'POST', body: { channel: 'qa', text: `[${material.title}] ${text}` } })
     setText('')
-    toast('Питання надіслано в Q&A курсу')
+    setSent(true)
   }
 
   return (
@@ -240,6 +209,7 @@ function AskLecturer({ material }) {
         <input className="input" placeholder="Запитайте викладача…" value={text} onChange={(e) => setText(e.target.value)} required />
         <button type="submit" className="btn"><Icon name="send" size={16} />Надіслати</button>
       </div>
+      {sent && <p className="muted small">Питання надіслано в Q&A курсу.</p>}
     </form>
   )
 }
@@ -251,17 +221,13 @@ function LectureSummary({ material }) {
 
   useEffect(() => {
     setSummary(null)
-    api(`/materials/${material.id}/summary`).then((data) => data.summary && setSummary({ summary: data.summary, cached: true }))
+    api(`/materials/${material.id}/summary`).then((data) => data.summary && setSummary(data))
   }, [material.id, material.content])
 
   async function make() {
     setBusy(true)
     setError('')
-    try {
-      setSummary(await api(`/materials/${material.id}/summary`, { method: 'POST' }))
-    } catch (err) {
-      setError(err.message)
-    }
+    await api(`/materials/${material.id}/summary`, { method: 'POST' }).then(setSummary).catch((err) => setError(err.message))
     setBusy(false)
   }
 
@@ -293,15 +259,10 @@ export default function Material({ user }) {
   const navigate = useNavigate()
   const [material, setMaterial] = useState(null)
   const [error, setError] = useState('')
-  const [dialog, setDialog] = useState(null)
+  const [editing, setEditing] = useState(false)
   const [panel, setPanel] = useState(null)
-  const toast = useToast()
 
-  useAgentContext(material && material.course_id, material && material.id)
-
-  function load() {
-    api(`/materials/${id}`).then(setMaterial).catch((err) => setError(err.message))
-  }
+  const load = () => api(`/materials/${id}`).then(setMaterial).catch((err) => setError(err.message))
 
   useEffect(() => {
     setMaterial(null)
@@ -313,21 +274,16 @@ export default function Material({ user }) {
   if (!material) return <Loading />
 
   const lab = material.kind === 'lab'
-  const due = lab ? relative(material.deadline) : null
   const student = user.role === 'student'
+  const status = lab && deadlineStatus(material.deadline)
+  const panels = [['notes', 'Нотатки'], ['ai', 'Питання до AI']]
+  if (lab) panels.unshift(['ask', 'Питання'])
 
   async function remove() {
-    try {
-      await api(`/materials/${material.id}`, { method: 'DELETE' })
-      toast('Матеріал видалено')
-      navigate(`/courses/${material.course_id}`)
-    } catch (err) {
-      toast(err.message, 'bad')
-    }
+    if (!confirm(`Видалити «${material.title}» разом зі здачами й оцінками?`)) return
+    await api(`/materials/${material.id}`, { method: 'DELETE' })
+    navigate(`/courses/${material.course_id}`)
   }
-
-  const panels = [{ value: 'notes', label: 'Нотатки' }, { value: 'ai', label: 'Питання до AI' }]
-  if (lab) panels.unshift({ value: 'ask', label: 'Питання' })
 
   return (
     <>
@@ -339,39 +295,38 @@ export default function Material({ user }) {
           {lab && (
             <p className="meta-line">
               До <b>{fmtShort(material.deadline)}</b> · {material.max_points} балів
-              {due && !(student && material.submission) && <span className={`status-text ${due.tone === 'ok' ? '' : due.tone}`}> · {due.text}</span>}
+              {!(student && material.submission) && <span className={`status-text ${status.tone}`}> · {status.text}</span>}
             </p>
           )}
         </div>
         {material.can_manage && (
           <div className="row">
-            <button className="btn secondary sm" onClick={() => setDialog('edit')}><Icon name="edit" size={14} />Редагувати</button>
-            <button className="btn secondary sm" onClick={() => setDialog('delete')}><Icon name="trash" size={14} />Видалити</button>
+            <button className="btn secondary sm" onClick={() => setEditing(true)}><Icon name="edit" size={14} />Редагувати</button>
+            <button className="btn secondary sm" onClick={remove}><Icon name="trash" size={14} />Видалити</button>
           </div>
         )}
       </div>
+
       <div className={student ? 'material-layout' : ''}>
-        <div>
-          {!lab && <div style={{ marginBottom: 12 }}><LectureSummary material={material} /></div>}
-          <div className="card">
-            <p className="reading">{material.content || 'Текст ще не додано.'}</p>
-          </div>
-          {!lab && <div style={{ marginTop: 12 }}><Recordings material={material} user={user} onAppended={load} /></div>}
-          <div style={{ marginTop: 12 }}><Attachments material={material} canManage={material.can_manage} reload={load} /></div>
-          {lab && material.can_manage && <div style={{ marginTop: 12 }}><Submissions material={material} /></div>}
+        <div className="stack">
+          {!lab && <LectureSummary material={material} />}
+          <div className="card"><p className="reading">{material.content || 'Текст ще не додано.'}</p></div>
+          {!lab && <Recordings material={material} user={user} onAppended={load} />}
+          <Attachments material={material} reload={load} />
+          {lab && material.can_manage && <Submissions material={material} />}
         </div>
         {student && (
           <aside className="material-side">
             {lab && <Upload material={material} onDone={load} />}
-            <Segmented value={panel} onChange={setPanel} options={panels} />
-            {panel === 'ask' && lab && <AskLecturer material={material} />}
+            <Choice value={panel} onChange={setPanel} options={panels} />
+            {panel === 'ask' && <AskLecturer material={material} />}
             {panel === 'notes' && <Notes key={material.id} materialId={material.id} initial={material.note} />}
-            {panel === 'ai' && <AiPanel material={material} ai={material.ai} />}
+            {panel === 'ai' && <AiPanel material={material} />}
           </aside>
         )}
       </div>
-      {dialog === 'edit' && <MaterialForm material={material} onSaved={load} onClose={() => setDialog(null)} />}
-      {dialog === 'delete' && <Confirm title="Видалити матеріал" text={`Видалити «${material.title}» разом зі здачами й оцінками? Цю дію не можна скасувати.`} onConfirm={remove} onClose={() => setDialog(null)} />}
+      {editing && <MaterialForm material={material} onSaved={load} onClose={() => setEditing(false)} />}
+      <AgentDrawer courseId={material.course_id} materialId={material.id} />
     </>
   )
 }
