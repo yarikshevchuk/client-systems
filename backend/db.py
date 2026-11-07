@@ -206,6 +206,7 @@ alter table messages drop constraint if exists messages_channel_check;
 alter table messages add column if not exists file_name text;
 alter table messages add column if not exists stored_name text;
 alter table users add column if not exists ticket text;
+alter table materials add column if not exists ai_on boolean not null default true;
 create table if not exists ai_usage (
     user_id int not null references users(id) on delete cascade,
     day date not null,

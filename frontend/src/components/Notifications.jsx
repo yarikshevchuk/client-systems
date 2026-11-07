@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, timeAgo } from '../api.js'
 import { useLive } from '../live.js'
 import { Icon } from './ui.jsx'
+import { t } from '../i18n.js'
 
 const ICONS = { grade: 'award', announcement: 'megaphone', reply: 'chat', question: 'help', accepted: 'check', submission: 'upload', reminder: 'clock', message: 'chat' }
 
@@ -37,7 +38,7 @@ export default function Notifications({ count, onRead }) {
 
   return (
     <div className="notifications">
-      <button className="icon-btn bell" onClick={toggle} aria-label="Сповіщення">
+      <button className="icon-btn bell" onClick={toggle} aria-label={t("Сповіщення")}>
         <Icon name="bell" size={20} />
         {count > 0 && <span className="dot-badge">{count > 9 ? '9+' : count}</span>}
       </button>
@@ -45,11 +46,11 @@ export default function Notifications({ count, onRead }) {
       {open && (
         <div className="panel">
           <div className="panel-head">
-            <strong>Сповіщення</strong>
-            <button className="link-btn small" onClick={markAll}>Позначити всі прочитаними</button>
+            <strong>{t("Сповіщення")}</strong>
+            <button className="link-btn small" onClick={markAll}>{t("Позначити всі прочитаними")}</button>
           </div>
           <div className="panel-body">
-            {items.length === 0 && <p className="muted center-text">Нових сповіщень немає.</p>}
+            {items.length === 0 && <p className="muted center-text">{t("Нових сповіщень немає.")}</p>}
             {items.map((item) => (
               <button key={item.id} className={item.read ? 'note' : 'note unread'} onClick={() => openItem(item)}>
                 <span className="icon-wrap"><Icon name={ICONS[item.kind] || 'bell'} size={16} /></span>

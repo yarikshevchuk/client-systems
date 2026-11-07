@@ -89,7 +89,7 @@ def spend(user):
 def course_sources(course_id):
     materials = db.select(
         "select m.id, m.title, m.kind, m.content from materials m join topics t on t.id = m.topic_id "
-        "where t.course_id = %s", (course_id,))
+        "where t.course_id = %s and m.ai_on", (course_id,))
     recordings = db.select(
         "select r.material_id as id, r.title, r.segments from recordings r join materials m on m.id = r.material_id "
         "join topics t on t.id = m.topic_id where t.course_id = %s and r.shared", (course_id,))

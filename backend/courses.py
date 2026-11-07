@@ -27,6 +27,7 @@ class MaterialIn(BaseModel):
     content: str = ""
     deadline: Optional[str] = None
     max_points: int = Field(default=0, ge=0, le=1000)
+    ai_on: bool = True
 
 
 class MoveIn(BaseModel):
@@ -160,10 +161,10 @@ def create_material(topic_id: int, body: MaterialIn, user=Depends(current_user))
     get_topic(topic_id, user)
     is_lab = body.kind == "lab"
     material_id = db.insert(
-        "insert into materials (topic_id, title, kind, content, deadline, max_points, created_at) "
-        "values (%s, %s, %s, %s, %s, %s, %s)",
+        "insert into materials (topic_id, title, kind, content, deadline, max_points, ai_on, created_at) "
+        "values (%s, %s, %s, %s, %s, %s, %s, %s)",
         (topic_id, body.title.strip(), body.kind, body.content, parse_deadline(body.kind, body.deadline),
-         body.max_points if is_lab else 0, datetime.now()))
+         body.max_points if is_lab else 0, body.ai_on, datetime.now()))
     return db.one("select * from materials where id = %s", (material_id,))
 
 
@@ -172,9 +173,9 @@ def update_material(material_id: int, body: MaterialIn, user=Depends(current_use
     get_material(material_id, user, manage=True)
     is_lab = body.kind == "lab"
     db.execute(
-        "update materials set title = %s, kind = %s, content = %s, deadline = %s, max_points = %s where id = %s",
+        "update materials set title = %s, kind = %s, content = %s, deadline = %s, max_points = %s, ai_on = %s where id = %s",
         (body.title.strip(), body.kind, body.content, parse_deadline(body.kind, body.deadline),
-         body.max_points if is_lab else 0, material_id))
+         body.max_points if is_lab else 0, body.ai_on, material_id))
     return db.one("select * from materials where id = %s", (material_id,))
 
 

@@ -90,11 +90,11 @@ def pick_target(course_id, user, material, message):
 def run_intent(user, course_id, text, message, material):
     settings = ai.get_settings(course_id)
     answer, sources, extra = "", [], {}
-    if has(text, "дедлайн", "здати", "здавати", "термін"):
+    if has(text, "дедлайн", "здати", "здавати", "термін", "deadline", "due"):
         answer, sources = deadlines_answer(user, course_id)
-    elif has(text, "оцінк", "балів", "бали", "прогрес", "успішн"):
+    elif has(text, "оцінк", "балів", "бали", "прогрес", "успішн", "grade", "points", "progress"):
         answer, sources = grades_answer(user, course_id)
-    elif has(text, "тест", "перевір", "запитай мене", "вікторин"):
+    elif has(text, "тест", "перевір", "запитай мене", "вікторин", "quiz", "test me"):
         if not settings["ask_on"]:
             raise HTTPException(403, "Викладач вимкнув AI-помічника для цього курсу")
         target = pick_target(course_id, user, material, message)
@@ -104,14 +104,14 @@ def run_intent(user, course_id, text, message, material):
         ai.spend(user)
         answer = f"Короткий тест за матеріалом «{target['title']}». Оберіть правильне слово."
         sources, extra = [{"id": target["id"], "title": target["title"]}], {"quiz": quiz}
-    elif has(text, "картк"):
+    elif has(text, "картк", "flashcard", "cards"):
         target = pick_target(course_id, user, material, message)
         if not target or target["kind"] != "lecture":
             return "Відкрийте лекцію або назвіть її, і я зроблю картки.", [], {}
         result = ai.generate_cards(target["id"], user)
         answer = f"Додав карток у вашу колоду: {len(result['cards'])}."
         sources, extra = [{"id": target["id"], "title": target["title"]}], {"link": "/flashcards"}
-    elif has(text, "конспект", "підсумуй", "підсумок", "коротко"):
+    elif has(text, "конспект", "підсумуй", "підсумок", "коротко", "summary", "summarize"):
         target = pick_target(course_id, user, material, message)
         if not target or target["kind"] != "lecture":
             return "Відкрийте лекцію або назвіть її, і я складу конспект.", [], {}

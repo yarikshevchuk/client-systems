@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { t } from '../i18n.js'
 
 const ICONS = {
   home: (<><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></>),
@@ -76,7 +77,7 @@ export function Modal({ title, onClose, children }) {
       <div className="modal" role="dialog" aria-label={title}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="icon-btn" aria-label="Закрити" onClick={onClose}><Icon name="x" /></button>
+          <button type="button" className="icon-btn" aria-label={t("Закрити")} onClick={onClose}><Icon name="x" /></button>
         </div>
         {children}
       </div>
@@ -106,4 +107,4 @@ export function Empty({ icon, children }) {
   return <div className="empty"><Icon name={icon} size={24} /><div>{children}</div></div>
 }
 
-export const Loading = () => <p className="muted">Завантаження…</p>
+export const Loading = () => <p className="muted">{t("Завантаження…")}</p>

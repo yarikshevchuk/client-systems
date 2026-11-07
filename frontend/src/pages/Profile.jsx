@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, roleName } from '../api.js'
 import { Avatar } from '../components/ui.jsx'
+import { t } from '../i18n.js'
 
 export default function Profile({ user, onChanged }) {
   const [form, setForm] = useState({ name: user.name, bio: user.bio || '', grp: user.grp || '' })
@@ -12,7 +13,7 @@ export default function Profile({ user, onChanged }) {
     event.preventDefault()
     try {
       onChanged(await api('/me', { method: 'PUT', body: form }))
-      setMessage('Профіль збережено')
+      setMessage(t("Профіль збережено"))
     } catch (err) {
       setMessage(err.message)
     }
@@ -23,7 +24,7 @@ export default function Profile({ user, onChanged }) {
     try {
       await api('/me/password', { method: 'PUT', body: password })
       setPassword({ old: '', new: '' })
-      setPasswordMessage('Пароль змінено')
+      setPasswordMessage(t("Пароль змінено"))
     } catch (err) {
       setPasswordMessage(err.message)
     }
@@ -45,36 +46,36 @@ export default function Profile({ user, onChanged }) {
       </div>
       <div className="grid two">
         <form className="card stack" onSubmit={save}>
-          <h2>Профіль</h2>
+          <h2>{t("Профіль")}</h2>
           <label className="field">
-            <span className="label">Повне ім'я</span>
+            <span className="label">{t("Повне ім'я")}</span>
             <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </label>
           {user.role === 'student' && (
             <label className="field">
-              <span className="label">Група</span>
+              <span className="label">{t("Група")}</span>
               <input className="input" value={form.grp} onChange={(e) => setForm({ ...form, grp: e.target.value })} required />
             </label>
           )}
           <label className="field">
-            <span className="label">Про себе</span>
+            <span className="label">{t("Про себе")}</span>
             <textarea className="textarea" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
           </label>
           {message && <p className="muted small">{message}</p>}
-          <div><button type="submit" className="btn">Зберегти профіль</button></div>
+          <div><button type="submit" className="btn">{t("Зберегти профіль")}</button></div>
         </form>
         <form className="card stack" onSubmit={changePassword}>
-          <h2>Пароль</h2>
+          <h2>{t("Пароль")}</h2>
           <label className="field">
-            <span className="label">Поточний пароль</span>
+            <span className="label">{t("Поточний пароль")}</span>
             <input className="input" type="password" value={password.old} onChange={(e) => setPassword({ ...password, old: e.target.value })} required />
           </label>
           <label className="field">
-            <span className="label">Новий пароль</span>
-            <input className="input" type="password" value={password.new} onChange={(e) => setPassword({ ...password, new: e.target.value })} placeholder="Щонайменше 4 символи" required />
+            <span className="label">{t("Новий пароль")}</span>
+            <input className="input" type="password" value={password.new} onChange={(e) => setPassword({ ...password, new: e.target.value })} placeholder={t("Щонайменше 4 символи")} required />
           </label>
           {passwordMessage && <p className="muted small">{passwordMessage}</p>}
-          <div><button type="submit" className="btn">Змінити пароль</button></div>
+          <div><button type="submit" className="btn">{t("Змінити пароль")}</button></div>
         </form>
       </div>
     </>

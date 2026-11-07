@@ -7,8 +7,9 @@ import MaterialForm from '../components/MaterialForm.jsx'
 import Notes from '../components/Notes.jsx'
 import Recordings from '../components/Recordings.jsx'
 import { Avatar, Choice, Icon, Loading, Modal } from '../components/ui.jsx'
+import { t } from '../i18n.js'
 
-const fileSize = (bytes) => (bytes > 1048576 ? (bytes / 1048576).toFixed(1) + ' МБ' : Math.ceil(bytes / 1024) + ' КБ')
+const fileSize = (bytes) => (bytes > 1048576 ? (bytes / 1048576).toFixed(1) + t(" МБ") : Math.ceil(bytes / 1024) + t(" КБ"))
 
 function Attachments({ material, reload }) {
   async function add(event) {
@@ -28,18 +29,18 @@ function Attachments({ material, reload }) {
     <div className="card">
       <div className="card-title">
         <span className="icon-wrap"><Icon name="file" size={16} /></span>
-        <h2>Файли</h2>
+        <h2>{t("Файли")}</h2>
         {material.can_manage && (
-          <label className="btn secondary sm push"><Icon name="upload" size={14} />Прикріпити файл<input type="file" hidden onChange={add} /></label>
+          <label className="btn secondary sm push"><Icon name="upload" size={14} />{t("Прикріпити файл")}<input type="file" hidden onChange={add} /></label>
         )}
       </div>
-      {material.attachments.length === 0 && <p className="muted small">Файлів ще немає.</p>}
+      {material.attachments.length === 0 && <p className="muted small">{t("Файлів ще немає.")}</p>}
       {material.attachments.map((file) => (
         <div className="file-row" key={file.id}>
           <Icon name="file" size={18} />
           <button className="link-btn grow" onClick={() => download(`/attachments/${file.id}/file`, file.filename)}>{file.filename}</button>
           <span className="muted small">{fileSize(file.size)}</span>
-          {material.can_manage && <button className="icon-btn" title="Видалити файл" onClick={() => remove(file)}><Icon name="trash" size={16} /></button>}
+          {material.can_manage && <button className="icon-btn" title={t("Видалити файл")} onClick={() => remove(file)}><Icon name="trash" size={16} /></button>}
         </div>
       ))}
     </div>
@@ -70,31 +71,31 @@ function Upload({ material, onDone }) {
     <div className="card">
       <div className="card-title">
         <span className="icon-wrap"><Icon name="upload" size={16} /></span>
-        <h2>Ваша робота</h2>
-        {graded ? <span className="badge ok">Оцінено</span> : sub ? <span className="badge accent">Здано</span> : <span className="badge">Не здано</span>}
+        <h2>{t("Ваша робота")}</h2>
+        {graded ? <span className="badge ok">{t("Оцінено")}</span> : sub ? <span className="badge accent">{t("Здано")}</span> : <span className="badge">{t("Не здано")}</span>}
       </div>
       {sub && (
         <div className="file-chosen" style={{ marginBottom: 14 }}>
           <span className="icon-wrap"><Icon name="file" size={20} /></span>
           <div className="grow">
             <button className="link-btn" onClick={() => download(`/submissions/${sub.id}/file`, sub.filename)}><strong>{sub.filename}</strong></button>
-            <span className="muted small">Здано {fmt(sub.submitted_at)}{sub.comment && ` · “${sub.comment}”`}</span>
+            <span className="muted small">{t("Здано")} {fmt(sub.submitted_at)}{sub.comment && ` · “${sub.comment}”`}</span>
           </div>
           {graded && <strong style={{ fontSize: '1.3rem' }}>{sub.grade} <span className="muted small">/ {material.max_points}</span></strong>}
         </div>
       )}
       {graded && sub.feedback && (
         <div className="feedback">
-          <span className="muted small">Відгук викладача</span>
+          <span className="muted small">{t("Відгук викладача")}</span>
           <p>{sub.feedback}</p>
         </div>
       )}
       {!graded && (
         <form onSubmit={submit} className="stack">
           <input className="input" type="file" accept=".pdf,.docx" onChange={(e) => setFile(e.target.files[0])} required />
-          <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Коментар для викладача (необов'язково)" />
+          <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t("Коментар для викладача (необов'язково)")} />
           {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
-          <div><button type="submit" className="btn"><Icon name="upload" size={16} />{sub ? 'Здати ще раз' : 'Здати'}</button></div>
+          <div><button type="submit" className="btn"><Icon name="upload" size={16} />{sub ? t("Здати ще раз") : t("Здати")}</button></div>
         </form>
       )}
     </div>
@@ -118,28 +119,28 @@ function GradeDialog({ row, material, onSaved, onClose }) {
   }
 
   return (
-    <Modal title={`Оцінювання: ${row.name}`} onClose={onClose}>
+    <Modal title={`${t("Оцінювання")}: ${row.name}`} onClose={onClose}>
       <form onSubmit={save} className="stack">
         <div className="file-chosen">
           <span className="icon-wrap"><Icon name="file" size={20} /></span>
           <div className="grow">
             <button type="button" className="link-btn" onClick={() => download(`/submissions/${row.submission_id}/file`, row.filename)}><strong>{row.filename}</strong></button>
-            <span className="muted small">Здано {fmt(row.submitted_at)}</span>
+            <span className="muted small">{t("Здано")} {fmt(row.submitted_at)}</span>
           </div>
         </div>
-        {row.comment && <p className="muted">Коментар студента: «{row.comment}»</p>}
+        {row.comment && <p className="muted">{t("Коментар студента: «")}{row.comment}»</p>}
         <label className="field">
-          <span className="label">Оцінка (макс. {material.max_points})</span>
+          <span className="label">{t("Оцінка (макс.")} {material.max_points})</span>
           <input className="input" type="number" min="0" max={material.max_points} value={grade} onChange={(e) => setGrade(e.target.value)} required />
         </label>
         <label className="field">
-          <span className="label">Відгук</span>
-          <textarea className="textarea" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Що вдалося, а що варто покращити" />
+          <span className="label">{t("Відгук")}</span>
+          <textarea className="textarea" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder={t("Що вдалося, а що варто покращити")} />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
-          <button type="submit" className="btn">Зберегти оцінку</button>
+          <button type="button" className="btn secondary" onClick={onClose}>{t("Скасувати")}</button>
+          <button type="submit" className="btn">{t("Зберегти оцінку")}</button>
         </div>
       </form>
     </Modal>
@@ -158,12 +159,12 @@ function Submissions({ material }) {
     <div className="card">
       <div className="card-title">
         <span className="icon-wrap"><Icon name="users" size={16} /></span>
-        <h2>Здані роботи</h2>
+        <h2>{t("Здані роботи")}</h2>
         <span className="badge">{rows.filter((row) => row.submission_id).length} / {rows.length}</span>
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Студент</th><th>Робота</th><th>Оцінка</th><th /></tr></thead>
+          <thead><tr><th>{t("Студент")}</th><th>{t("Робота")}</th><th>{t("Оцінка")}</th><th /></tr></thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.student_id}>
@@ -174,10 +175,10 @@ function Submissions({ material }) {
                       <button className="link-btn row" onClick={() => download(`/submissions/${row.submission_id}/file`, row.filename)}><Icon name="download" size={15} />{row.filename}</button>
                       <span className="muted small">{timeAgo(row.submitted_at)}</span>
                     </div>
-                  ) : <span className="badge">Не здано</span>}
+                  ) : <span className="badge">{t("Не здано")}</span>}
                 </td>
-                <td>{row.grade !== null ? <span className="badge ok">{row.grade} / {material.max_points}</span> : row.submission_id ? <span className="badge warn">Очікує</span> : '—'}</td>
-                <td>{row.submission_id && <button className="btn secondary sm" onClick={() => setGrading(row)}>{row.grade !== null ? 'Змінити оцінку' : 'Оцінити'}</button>}</td>
+                <td>{row.grade !== null ? <span className="badge ok">{row.grade} / {material.max_points}</span> : row.submission_id ? <span className="badge warn">{t("Очікує")}</span> : '—'}</td>
+                <td>{row.submission_id && <button className="btn secondary sm" onClick={() => setGrading(row)}>{row.grade !== null ? t("Змінити оцінку") : t("Оцінити")}</button>}</td>
               </tr>
             ))}
           </tbody>
@@ -203,13 +204,13 @@ function AskLecturer({ material }) {
     <form className="card" onSubmit={send}>
       <div className="card-title">
         <span className="icon-wrap"><Icon name="help" size={16} /></span>
-        <h2>Питання щодо цієї лабораторної</h2>
+        <h2>{t("Питання щодо цієї лабораторної")}</h2>
       </div>
       <div className="row">
-        <input className="input" placeholder="Запитайте викладача…" value={text} onChange={(e) => setText(e.target.value)} required />
-        <button type="submit" className="btn"><Icon name="send" size={16} />Надіслати</button>
+        <input className="input" placeholder={t("Запитайте викладача…")} value={text} onChange={(e) => setText(e.target.value)} required />
+        <button type="submit" className="btn"><Icon name="send" size={16} />{t("Надіслати")}</button>
       </div>
-      {sent && <p className="muted small">Питання надіслано в Q&A курсу.</p>}
+      {sent && <p className="muted small">{t("Питання надіслано в Q&A курсу.")}</p>}
     </form>
   )
 }
@@ -235,17 +236,17 @@ function LectureSummary({ material }) {
     <div className="card ai-card">
       <div className="card-title">
         <span className="icon-wrap"><Icon name="sparkle" size={16} /></span>
-        <h2>AI-конспект</h2>
-        {material.ai.summaries_on && <button className="btn sm push" onClick={make} disabled={busy}>{busy ? 'Складаємо…' : summary ? 'Оновити' : 'Скласти конспект'}</button>}
+        <h2>{t("AI-конспект")}</h2>
+        {material.ai.summaries_on && <button className="btn sm push" onClick={make} disabled={busy}>{busy ? t("Складаємо…") : summary ? t("Оновити") : t("Скласти конспект")}</button>}
       </div>
-      {!material.ai.summaries_on && <p className="muted small">Викладач вимкнув AI-конспекти для цього курсу.</p>}
-      {material.ai.summaries_on && !summary && !error && <p className="muted small">Короткі ключові думки лекції в один клік.</p>}
+      {!material.ai.summaries_on && <p className="muted small">{t("Викладач вимкнув AI-конспекти для цього курсу.")}</p>}
+      {material.ai.summaries_on && !summary && !error && <p className="muted small">{t("Короткі ключові думки лекції в один клік.")}</p>}
       {error && <p className="error">{error}</p>}
       {summary && (
         <div className="ai-result">
           <div className="row wrap" style={{ gap: 6 }}>
-            <span className="badge accent">Згенеровано AI</span>
-            {summary.demo && <span className="badge">демо-режим</span>}
+            <span className="badge accent">{t("Згенеровано AI")}</span>
+            {summary.demo && <span className="badge">{t("демо-режим")}</span>}
           </div>
           <ul>{summary.summary.split('\n').map((line, index) => <li key={index}>{line.replace(/^[-•*]\s*/, '')}</li>)}</ul>
         </div>
@@ -276,11 +277,12 @@ export default function Material({ user }) {
   const lab = material.kind === 'lab'
   const student = user.role === 'student'
   const status = lab && deadlineStatus(material.deadline)
-  const panels = [['notes', 'Нотатки'], ['ai', 'Питання до AI']]
-  if (lab) panels.unshift(['ask', 'Питання'])
+  const panels = [['notes', t("Нотатки")]]
+  if (material.ai_on) panels.push(['ai', t("Питання до AI")])
+  if (lab) panels.unshift(['ask', t("Питання")])
 
   async function remove() {
-    if (!confirm(`Видалити «${material.title}» разом зі здачами й оцінками?`)) return
+    if (!confirm(t("Видалити «{title}» разом зі здачами й оцінками?", { title: material.title }))) return
     await api(`/materials/${material.id}`, { method: 'DELETE' })
     navigate(`/courses/${material.course_id}`)
   }
@@ -290,19 +292,19 @@ export default function Material({ user }) {
       <Link to={`/courses/${material.course_id}`} className="crumb"><Icon name="left" size={16} />{material.course_title} / {material.topic_title}</Link>
       <div className="title-row">
         <div>
-          <div className="kicker">{lab ? 'Лабораторна' : 'Лекція'}</div>
+          <div className="kicker">{lab ? t("Лабораторна") : t("Лекція")}</div>
           <h1>{material.title}</h1>
           {lab && (
             <p className="meta-line">
-              До <b>{fmtShort(material.deadline)}</b> · {material.max_points} балів
+              {t("До")} <b>{fmtShort(material.deadline)}</b> · {material.max_points} {t("балів")}
               {!(student && material.submission) && <span className={`status-text ${status.tone}`}> · {status.text}</span>}
             </p>
           )}
         </div>
         {material.can_manage && (
           <div className="row">
-            <button className="btn secondary sm" onClick={() => setEditing(true)}><Icon name="edit" size={14} />Редагувати</button>
-            <button className="btn secondary sm" onClick={remove}><Icon name="trash" size={14} />Видалити</button>
+            <button className="btn secondary sm" onClick={() => setEditing(true)}><Icon name="edit" size={14} />{t("Редагувати")}</button>
+            <button className="btn secondary sm" onClick={remove}><Icon name="trash" size={14} />{t("Видалити")}</button>
           </div>
         )}
       </div>
@@ -310,7 +312,7 @@ export default function Material({ user }) {
       <div className={student ? 'material-layout' : ''}>
         <div className="stack">
           {!lab && <LectureSummary material={material} />}
-          <div className="card"><p className="reading">{material.content || 'Текст ще не додано.'}</p></div>
+          <div className="card"><p className="reading">{material.content || t("Текст ще не додано.")}</p></div>
           {!lab && <Recordings material={material} user={user} onAppended={load} />}
           <Attachments material={material} reload={load} />
           {lab && material.can_manage && <Submissions material={material} />}
@@ -319,6 +321,7 @@ export default function Material({ user }) {
           <aside className="material-side">
             {lab && <Upload material={material} onDone={load} />}
             <Choice value={panel} onChange={setPanel} options={panels} />
+            {!material.ai_on && <p className="muted small">{t("Викладач вимкнув AI-підказки до цієї лабораторної.")}</p>}
             {panel === 'ask' && <AskLecturer material={material} />}
             {panel === 'notes' && <Notes key={material.id} materialId={material.id} initial={material.note} />}
             {panel === 'ai' && <AiPanel material={material} />}

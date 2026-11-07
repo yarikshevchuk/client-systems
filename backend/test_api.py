@@ -295,6 +295,12 @@ def test_ai(client, monkeypatch):
     assert get(client, student, "/api/ai/usage")["used"] == used + 1
     graded = client.post(f"/api/courses/{algorithms}/ask", headers=student, json={"question": "Реалізуйте і виведіть"}).json()
     assert graded["graded"] and "не даю готового розв'язку" in graded["answer"]
+    lab_body = get(client, teacher, f"/api/materials/{lab}")
+    assert lab_body["ai_on"] is True
+    lab_body.update(ai_on=False, deadline=lab_body["deadline"][:16])
+    assert client.put(f"/api/materials/{lab}", headers=teacher, json=lab_body).json()["ai_on"] is False
+    hidden = client.post(f"/api/courses/{algorithms}/ask", headers=student, json={"question": "Реалізуйте і виведіть"}).json()
+    assert all(s["id"] != lab for s in hidden["sources"])
     generated = client.post(f"/api/materials/{lecture}/flashcards/generate", headers=student).json()
     assert generated["demo"] and len(generated["cards"]) >= 3 and "_____" in generated["cards"][0]["front"]
     assert get(client, student, "/api/flashcards")["due"] >= 5

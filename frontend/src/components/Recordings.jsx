@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, getToken, timeAgo } from '../api.js'
 import { Icon } from './ui.jsx'
+import { locale, t } from '../i18n.js'
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 
@@ -16,7 +17,7 @@ function Recorder({ materialId, onSaved }) {
   async function start() {
     setError('')
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null)
-    if (!stream) return setError('Немає доступу до мікрофона. Дозвольте його в налаштуваннях браузера')
+    if (!stream) return setError(t("Немає доступу до мікрофона. Дозвольте його в налаштуваннях браузера"))
 
     const s = { stream, chunks: [], segments: [], began: Date.now() }
     s.recorder = new MediaRecorder(stream)
@@ -26,7 +27,7 @@ function Recorder({ materialId, onSaved }) {
 
     if (SpeechRecognition) {
       s.recognition = new SpeechRecognition()
-      s.recognition.lang = 'uk-UA'
+      s.recognition.lang = locale
       s.recognition.continuous = true
       s.recognition.interimResults = true
       s.recognition.onresult = (event) => {
@@ -66,8 +67,8 @@ function Recorder({ materialId, onSaved }) {
   if (!recording) {
     return (
       <div>
-        <button className="btn" onClick={start}><Icon name="mic" size={16} />Записати голос</button>
-        {!SpeechRecognition && <p className="muted small" style={{ marginTop: 8 }}>Цей браузер не розпізнає мову: запис збережеться без тексту. Для тексту відкрийте Chrome або Edge.</p>}
+        <button className="btn" onClick={start}><Icon name="mic" size={16} />{t("Записати голос")}</button>
+        {!SpeechRecognition && <p className="muted small" style={{ marginTop: 8 }}>{t("Цей браузер не розпізнає мову: запис збережеться без тексту. Для тексту відкрийте Chrome або Edge.")}</p>}
         {error && <p className="error">{error}</p>}
       </div>
     )
@@ -77,11 +78,11 @@ function Recorder({ materialId, onSaved }) {
     <div className="recorder">
       <div className="row">
         <span className="rec-dot" />
-        <strong>Іде запис {clock(seconds)}</strong>
-        <button className="btn secondary sm push" onClick={stop}><Icon name="stop" size={14} />Зупинити й зберегти</button>
+        <strong>{t("Іде запис")} {clock(seconds)}</strong>
+        <button className="btn secondary sm push" onClick={stop}><Icon name="stop" size={14} />{t("Зупинити й зберегти")}</button>
       </div>
       <div className="live-text">
-        {segments.length === 0 && <span className="muted">Говоріть — текст з’являтиметься тут</span>}
+        {segments.length === 0 && <span className="muted">{t("Говоріть — текст з’являтиметься тут")}</span>}
         {segments.map((segment, index) => <p key={index}><span className="stamp">{clock(segment.start)}</span>{segment.text}</p>)}
       </div>
     </div>
@@ -118,7 +119,7 @@ function Player({ recording, canDelete, canAppend, onChanged, onAppended }) {
   }
 
   async function remove() {
-    if (!confirm(`Видалити «${recording.title}» разом з текстом?`)) return
+    if (!confirm(t("Видалити «{title}» разом з текстом?", { title: recording.title }))) return
     await api(`/recordings/${recording.id}`, { method: 'DELETE' })
     onChanged()
   }
@@ -127,11 +128,11 @@ function Player({ recording, canDelete, canAppend, onChanged, onAppended }) {
     <div className="recording">
       <div className="row wrap">
         <strong>{recording.title}</strong>
-        <span className="badge">{recording.shared ? 'Для всіх' : 'Лише ви'}</span>
+        <span className="badge">{recording.shared ? t("Для всіх") : t("Лише ви")}</span>
         <span className="muted small">{recording.author} · {timeAgo(recording.created_at)} · {clock(recording.duration)}</span>
-        {canDelete && <button className="icon-btn push" title="Видалити запис" onClick={remove}><Icon name="trash" size={16} /></button>}
+        {canDelete && <button className="icon-btn push" title={t("Видалити запис")} onClick={remove}><Icon name="trash" size={16} /></button>}
       </div>
-      {src ? <audio ref={audio} src={src} controls onTimeUpdate={(event) => setTime(event.target.currentTime)} /> : <p className="muted small">Завантаження аудіо…</p>}
+      {src ? <audio ref={audio} src={src} controls onTimeUpdate={(event) => setTime(event.target.currentTime)} /> : <p className="muted small">{t("Завантаження аудіо…")}</p>}
       {segments.length > 0 ? (
         <div className="transcript">
           {segments.map((segment, index) => (
@@ -140,18 +141,18 @@ function Player({ recording, canDelete, canAppend, onChanged, onAppended }) {
             </button>
           ))}
         </div>
-      ) : <p className="muted small">Тексту немає: браузер не розпізнав мову під час запису.</p>}
+      ) : <p className="muted small">{t("Тексту немає: браузер не розпізнав мову під час запису.")}</p>}
       {error && <p className="error">{error}</p>}
       {summary && (
         <div className="ai-result">
-          <span className="badge accent">Згенеровано AI</span>
+          <span className="badge accent">{t("Згенеровано AI")}</span>
           <ul>{summary.split('\n').map((line, index) => <li key={index}>{line.replace(/^[-•*]\s*/, '')}</li>)}</ul>
         </div>
       )}
       {segments.length > 0 && (
         <div className="row wrap">
-          <button className="btn secondary sm" onClick={makeSummary}><Icon name="sparkle" size={14} />{summary ? 'Оновити AI-конспект запису' : 'AI-конспект запису'}</button>
-          {canAppend && <button className="btn secondary sm" onClick={append}><Icon name="plus" size={14} />Додати текст до лекції</button>}
+          <button className="btn secondary sm" onClick={makeSummary}><Icon name="sparkle" size={14} />{summary ? t("Оновити AI-конспект запису") : t("AI-конспект запису")}</button>
+          {canAppend && <button className="btn secondary sm" onClick={append}><Icon name="plus" size={14} />{t("Додати текст до лекції")}</button>}
         </div>
       )}
     </div>
@@ -168,11 +169,11 @@ export default function Recordings({ material, user, onAppended }) {
     <div className="card">
       <div className="card-title">
         <span className="icon-wrap"><Icon name="mic" size={16} /></span>
-        <h2>Записи лекції</h2>
+        <h2>{t("Записи лекції")}</h2>
         {list.length > 0 && <span className="badge">{list.length}</span>}
       </div>
       <p className="muted small" style={{ marginTop: 0 }}>
-        {material.can_manage ? 'Запис бачать усі студенти курсу.' : 'Ваш запис бачите лише ви.'} Клік по реченню перемотує звук.
+        {material.can_manage ? t("Запис бачать усі студенти курсу.") : t("Ваш запис бачите лише ви.")} {t("Клік по реченню перемотує звук.")}
       </p>
       <Recorder materialId={material.id} onSaved={load} />
       <div className="stack" style={{ marginTop: 14 }}>

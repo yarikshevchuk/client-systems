@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, fmt } from '../api.js'
 import { Empty, Icon, Loading, Modal, ProgressBar } from '../components/ui.jsx'
+import { t } from '../i18n.js'
 
 function NewCard({ onClose, onSaved }) {
   const [front, setFront] = useState('')
@@ -14,19 +15,19 @@ function NewCard({ onClose, onSaved }) {
   }
 
   return (
-    <Modal title="Нова картка" onClose={onClose}>
+    <Modal title={t("Нова картка")} onClose={onClose}>
       <form onSubmit={save} className="stack">
         <label className="field">
-          <span className="label">Питання</span>
+          <span className="label">{t("Питання")}</span>
           <textarea className="textarea" value={front} onChange={(e) => setFront(e.target.value)} autoFocus required />
         </label>
         <label className="field">
-          <span className="label">Відповідь</span>
+          <span className="label">{t("Відповідь")}</span>
           <textarea className="textarea" value={back} onChange={(e) => setBack(e.target.value)} required />
         </label>
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
-          <button type="submit" className="btn">Додати картку</button>
+          <button type="button" className="btn secondary" onClick={onClose}>{t("Скасувати")}</button>
+          <button type="submit" className="btn">{t("Додати картку")}</button>
         </div>
       </form>
     </Modal>
@@ -50,9 +51,9 @@ function Review({ cards, onDone }) {
     return (
       <div className="card center-card">
         <span className="icon-wrap big"><Icon name="check" size={28} /></span>
-        <h2>Сесію завершено</h2>
-        <p className="muted">Правильних відповідей: {right} з {cards.length}.</p>
-        <button className="btn" onClick={onDone}>Назад до колоди</button>
+        <h2>{t("Сесію завершено")}</h2>
+        <p className="muted">{t("Правильних відповідей:")} {right} {t("з")} {cards.length}.</p>
+        <button className="btn" onClick={onDone}>{t("Назад до колоди")}</button>
       </div>
     )
   }
@@ -60,19 +61,19 @@ function Review({ cards, onDone }) {
   return (
     <div className="card review">
       <div className="row between">
-        <span className="muted small">Картка {index + 1} з {cards.length}</span>
-        <button className="link-btn small" onClick={onDone}>Завершити сесію</button>
+        <span className="muted small">{t("Картка")} {index + 1} {t("з")} {cards.length}</span>
+        <button className="link-btn small" onClick={onDone}>{t("Завершити сесію")}</button>
       </div>
       <ProgressBar percent={(100 * index) / cards.length} color="var(--ink)" />
       <div className="flash">
         <p className="front">{card.front}</p>
         {shown && <p className="back">{card.back}</p>}
       </div>
-      {!shown && <button className="btn block" onClick={() => setShown(true)}>Показати відповідь</button>}
+      {!shown && <button className="btn block" onClick={() => setShown(true)}>{t("Показати відповідь")}</button>}
       {shown && (
         <div className="row">
-          <button className="btn secondary block" onClick={() => answer(false)}>Не знав(ла)</button>
-          <button className="btn block" onClick={() => answer(true)}>Знав(ла)</button>
+          <button className="btn secondary block" onClick={() => answer(false)}>{t("Не знав(ла)")}</button>
+          <button className="btn block" onClick={() => answer(true)}>{t("Знав(ла)")}</button>
         </div>
       )}
     </div>
@@ -98,21 +99,21 @@ export default function Flashcards() {
   if (reviewing) {
     return (
       <>
-        <div className="page-head"><h1>Повторення</h1></div>
+        <div className="page-head"><h1>{t("Повторення")}</h1></div>
         <Review cards={reviewing} onDone={() => { setReviewing(null); load() }} />
       </>
     )
   }
 
-  const tiles = [['cards', data.cards.length, 'Карток у колоді'], ['clock', due.length, 'Час повторити'], ['award', data.cards.filter((card) => card.box >= 3).length, 'Добре знаєте']]
+  const tiles = [['cards', data.cards.length, t("Карток у колоді")], ['clock', due.length, t("Час повторити")], ['award', data.cards.filter((card) => card.box >= 3).length, t("Добре знаєте")]]
 
   return (
     <>
       <div className="page-head">
-        <h1>Картки</h1>
+        <h1>{t("Картки")}</h1>
         <div className="row">
-          <button className="btn secondary" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Нова картка</button>
-          <button className="btn" disabled={due.length === 0} onClick={() => setReviewing(due)}><Icon name="cards" size={16} />Повторити: {due.length}</button>
+          <button className="btn secondary" onClick={() => setAdding(true)}><Icon name="plus" size={16} />{t("Нова картка")}</button>
+          <button className="btn" disabled={due.length === 0} onClick={() => setReviewing(due)}><Icon name="cards" size={16} />{t("Повторити:")} {due.length}</button>
         </div>
       </div>
       <div className="grid three">
@@ -121,8 +122,8 @@ export default function Flashcards() {
         ))}
       </div>
       <div className="section">
-        <div className="section-head"><h2>Усі картки</h2></div>
-        {data.cards.length === 0 && <Empty icon="cards">Колода порожня. Створіть картки з лекції за допомогою AI-помічника або додайте власні.</Empty>}
+        <div className="section-head"><h2>{t("Усі картки")}</h2></div>
+        {data.cards.length === 0 && <Empty icon="cards">{t("Колода порожня. Створіть картки з лекції за допомогою AI-помічника або додайте власні.")}</Empty>}
         {data.cards.map((card) => (
           <div className="item" key={card.id}>
             <div className="grow">
@@ -130,8 +131,8 @@ export default function Flashcards() {
               <span className="muted small">{card.back}{card.material_title && ` · ${card.material_title}`}</span>
             </div>
             <div className="side">
-              <span className={card.is_due ? 'badge warn' : 'badge'}>{card.is_due ? 'Час повторити' : `Повторити ${fmt(card.due)}`}</span>
-              <button className="icon-btn" title="Видалити картку" onClick={() => remove(card)}><Icon name="trash" size={16} /></button>
+              <span className={card.is_due ? 'badge warn' : 'badge'}>{card.is_due ? t("Час повторити") : `${t("Повторити")} ${fmt(card.due)}`}</span>
+              <button className="icon-btn" title={t("Видалити картку")} onClick={() => remove(card)}><Icon name="trash" size={16} /></button>
             </div>
           </div>
         ))}

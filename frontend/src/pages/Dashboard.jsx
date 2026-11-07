@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, deadlineStatus, fmtShort, timeAgo } from '../api.js'
 import { Avatar, colorFor, Empty, Icon, Loading, Modal, ProgressBar } from '../components/ui.jsx'
+import { t } from '../i18n.js'
 
 function NewCourse({ onClose, onCreated }) {
   const [form, setForm] = useState({ title: '', description: '', grp: 'CS-21' })
@@ -20,24 +21,24 @@ function NewCourse({ onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Додати курс" onClose={onClose}>
+    <Modal title={t("Додати курс")} onClose={onClose}>
       <form onSubmit={create} className="stack">
         <label className="field">
-          <span className="label">Назва</span>
-          <input className="input" value={form.title} onChange={set('title')} placeholder="наприклад, Комп'ютерні мережі" autoFocus required />
+          <span className="label">{t("Назва")}</span>
+          <input className="input" value={form.title} onChange={set('title')} placeholder={t("наприклад, Комп'ютерні мережі")} autoFocus required />
         </label>
         <label className="field">
-          <span className="label">Опис</span>
-          <textarea className="textarea" value={form.description} onChange={set('description')} placeholder="Про що цей курс?" />
+          <span className="label">{t("Опис")}</span>
+          <textarea className="textarea" value={form.description} onChange={set('description')} placeholder={t("Про що цей курс?")} />
         </label>
         <label className="field">
-          <span className="label">Група студентів</span>
+          <span className="label">{t("Група студентів")}</span>
           <input className="input" value={form.grp} onChange={set('grp')} required />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="modal-foot">
-          <button type="button" className="btn secondary" onClick={onClose}>Скасувати</button>
-          <button type="submit" className="btn">Додати курс</button>
+          <button type="button" className="btn secondary" onClick={onClose}>{t("Скасувати")}</button>
+          <button type="submit" className="btn">{t("Додати курс")}</button>
         </div>
       </form>
     </Modal>
@@ -56,18 +57,18 @@ function CourseTile({ course, student, next }) {
       <div className="tile-body">
         {student ? (
           <>
-            <div className="row between small"><span className="muted">Бали за курс</span><b>{course.earned} / {course.total_max}</b></div>
+            <div className="row between small"><span className="muted">{t("Бали за курс")}</span><b>{course.earned} / {course.total_max}</b></div>
             <ProgressBar percent={course.total_max ? (100 * course.earned) / course.total_max : 0} color={color} />
             <div className="tile-next small">
               {next
-                ? <><span className="muted">Найближче:</span> {next.title.split('.')[0]} · <span className={`status-text ${status.tone}`}>{status.text}</span></>
-                : <span className="muted">Немає невиконаних завдань</span>}
+                ? <><span className="muted">{t("Найближче:")}</span> {next.title.split('.')[0]} · <span className={`status-text ${status.tone}`}>{status.text}</span></>
+                : <span className="muted">{t("Немає невиконаних завдань")}</span>}
             </div>
           </>
         ) : (
           <div className="row between small">
-            <span className="muted">Група {course.grp}</span>
-            {course.ungraded > 0 ? <span className="badge warn">На перевірку: {course.ungraded}</span> : <span className="badge ok">Усе перевірено</span>}
+            <span className="muted">{t("Група")} {course.grp}</span>
+            {course.ungraded > 0 ? <span className="badge warn">{t("На перевірку:")} {course.ungraded}</span> : <span className="badge ok">{t("Усе перевірено")}</span>}
           </div>
         )}
       </div>
@@ -90,21 +91,21 @@ export default function Dashboard({ user, onCoursesChanged }) {
     return (
       <>
         <div className="page-head">
-          <h1>Привіт, {firstName}</h1>
-          <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Новий курс</button>
+          <h1>{t("Привіт,")} {firstName}</h1>
+          <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />{t("Новий курс")}</button>
         </div>
-        <h3 className="group-title">Мої курси</h3>
+        <h3 className="group-title">{t("Мої курси")}</h3>
         <div className="tile-grid">
           {data.courses.map((course) => <CourseTile key={course.id} course={course} />)}
         </div>
-        <h3 className="group-title">На перевірку</h3>
-        {data.recent.length === 0 && <Empty icon="check">Усе перевірено.</Empty>}
+        <h3 className="group-title">{t("На перевірку")}</h3>
+        {data.recent.length === 0 && <Empty icon="check">{t("Усе перевірено.")}</Empty>}
         {data.recent.map((row) => (
           <Link to={`/materials/${row.material_id}`} className="next-row" key={row.id}>
             <Avatar name={row.student} size={30} />
             <span className="grow"><b>{row.student}</b><span className="muted small">{row.title}</span></span>
             <span className="muted small">{timeAgo(row.submitted_at)}</span>
-            <span className="btn sm">Оцінити</span>
+            <span className="btn sm">{t("Оцінити")}</span>
           </Link>
         ))}
         {adding && <NewCourse onClose={() => setAdding(false)} onCreated={() => { load(); onCoursesChanged() }} />}
@@ -115,8 +116,8 @@ export default function Dashboard({ user, onCoursesChanged }) {
   return (
     <>
       <div className="page-head">
-        <h1>Привіт, {firstName}</h1>
-        {data.due_cards > 0 && <Link to="/flashcards" className="btn secondary sm"><Icon name="cards" size={14} />Картки: {data.due_cards}</Link>}
+        <h1>{t("Привіт,")} {firstName}</h1>
+        {data.due_cards > 0 && <Link to="/flashcards" className="btn secondary sm"><Icon name="cards" size={14} />{t("Картки:")} {data.due_cards}</Link>}
       </div>
       {data.announcements.filter((item) => !item.read).slice(0, 2).map((item) => (
         <Link key={item.id} to={`/courses/${item.course_id}?tab=announcements`} className="notice">
@@ -124,14 +125,14 @@ export default function Dashboard({ user, onCoursesChanged }) {
           <span><b>{item.title}</b> · {item.course_title}</span>
         </Link>
       ))}
-      <h3 className="group-title">Мої курси</h3>
+      <h3 className="group-title">{t("Мої курси")}</h3>
       <div className="tile-grid">
         {data.courses.map((course) => (
           <CourseTile key={course.id} course={course} student next={data.deadlines.find((row) => row.course_id === course.id)} />
         ))}
       </div>
-      <h3 className="group-title" style={{ marginTop: 28 }}>Завдання, які треба здати</h3>
-      {data.deadlines.length === 0 && <Empty icon="check">Усе здано. Можна відпочити.</Empty>}
+      <h3 className="group-title" style={{ marginTop: 28 }}>{t("Завдання, які треба здати")}</h3>
+      {data.deadlines.length === 0 && <Empty icon="check">{t("Усе здано. Можна відпочити.")}</Empty>}
       {data.deadlines.map((row) => (
         <Link to={`/materials/${row.id}`} className="next-row" key={row.id}>
           <i className="dot" style={{ background: colorFor(row.course_id) }} />

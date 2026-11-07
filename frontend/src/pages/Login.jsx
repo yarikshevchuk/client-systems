@@ -1,19 +1,20 @@
 import { useState } from 'react'
 import { api, setToken } from '../api.js'
 import { Avatar, Choice, Icon } from '../components/ui.jsx'
+import { lang, switchLang, t } from '../i18n.js'
 
 const DEMO = [
-  ['Андрій Мельник', 'Студент', 'andrii@vns.demo'],
-  ['Марина Шевчук', 'Студент · староста групи', 'maryna@vns.demo'],
-  ['Олена Коваленко', 'Викладач', 'olena@vns.demo'],
-  ['Адміністратор VNS', 'Адміністратор', 'admin@vns.demo'],
+  [t("Андрій Мельник"), t("Студент"), 'andrii@vns.demo'],
+  [t("Марина Шевчук"), t("Студент · староста групи"), 'maryna@vns.demo'],
+  [t("Олена Коваленко"), t("Викладач"), 'olena@vns.demo'],
+  [t("Адміністратор VNS"), t("Адміністратор"), 'admin@vns.demo'],
 ]
 
 const FEATURES = [
-  ['calendar', 'Усі дедлайни в одному місці', 'Бачте, що й коли здавати, здавайте роботи та читайте відгуки викладача в тому ж курсі.'],
-  ['award', 'Чесний прогноз оцінки', 'Зароблені бали, результат за оціненими роботами й максимум, який ще можна набрати.'],
-  ['chat', 'Запитання лишаються в курсі', 'Q&A з прийнятими відповідями, оголошення з підтвердженням прочитання та особисті повідомлення.'],
-  ['sparkle', 'AI-допомога за правилами викладача', 'Конспекти, картки й відповіді лише за матеріалами курсу, для оцінюваних лабораторних тільки підказки.'],
+  ['calendar', t("Усі дедлайни в одному місці"), t("Бачте, що й коли здавати, здавайте роботи та читайте відгуки викладача в тому ж курсі.")],
+  ['award', t("Чесний прогноз оцінки"), t("Зароблені бали, результат за оціненими роботами й максимум, який ще можна набрати.")],
+  ['chat', t("Запитання лишаються в курсі"), t("Q&A з прийнятими відповідями, оголошення з підтвердженням прочитання та особисті повідомлення.")],
+  ['sparkle', t("AI-допомога за правилами викладача"), t("Конспекти, картки й відповіді лише за матеріалами курсу, для оцінюваних лабораторних тільки підказки.")],
 ]
 
 export default function Login({ onLogin }) {
@@ -43,8 +44,8 @@ export default function Login({ onLogin }) {
     <div className="auth">
       <section className="auth-side">
         <div className="brand"><span className="logo-mark">V</span>VNS</div>
-        <h1 style={{ marginTop: 40, maxWidth: 420 }}>Навчання, у якому все під контролем.</h1>
-        <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>Курси, дедлайни, запитання й оцінки для студентів і викладачів.</p>
+        <h1 style={{ marginTop: 40, maxWidth: 420 }}>{t("Навчання, у якому все під контролем.")}</h1>
+        <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>{t("Курси, дедлайни, запитання й оцінки для студентів і викладачів.")}</p>
         <div className="features">
           {FEATURES.map(([icon, title, text]) => (
             <div className="feature" key={title}>
@@ -57,46 +58,49 @@ export default function Login({ onLogin }) {
 
       <section className="auth-main">
         <div className="auth-box">
-          <div className="brand" style={{ padding: 0 }}><span className="logo-mark">V</span>VNS</div>
-          <h1>{mode === 'login' ? 'З поверненням' : 'Створіть акаунт'}</h1>
-          <p className="muted">{mode === 'login' ? 'Увійдіть, щоб перейти до своїх курсів.' : 'Приєднайтеся до своєї групи та курсів.'}</p>
+          <div className="row between">
+            <div className="brand" style={{ padding: 0 }}><span className="logo-mark">V</span>VNS</div>
+            <button className="btn secondary sm" onClick={switchLang}>{lang === 'en' ? 'Українська' : 'English'}</button>
+          </div>
+          <h1>{mode === 'login' ? t("З поверненням") : t("Створіть акаунт")}</h1>
+          <p className="muted">{mode === 'login' ? t("Увійдіть, щоб перейти до своїх курсів.") : t("Приєднайтеся до своєї групи та курсів.")}</p>
           <div style={{ marginTop: 18 }}>
-            <Choice value={mode} onChange={setMode} options={[['login', 'Вхід'], ['register', 'Реєстрація']]} />
+            <Choice value={mode} onChange={setMode} options={[['login', t("Вхід")], ['register', t("Реєстрація")]]} />
           </div>
           <form className="stack" style={{ marginTop: 18 }} onSubmit={submit}>
             {mode === 'register' && (
               <>
                 <label className="field">
-                  <span className="label">Повне ім'я</span>
-                  <input className="input" value={form.name} onChange={set('name')} placeholder="Андрій Мельник" required />
+                  <span className="label">{t("Повне ім'я")}</span>
+                  <input className="input" value={form.name} onChange={set('name')} placeholder={t("Андрій Мельник")} required />
                 </label>
                 <div className="field">
-                  <span className="label">Я</span>
-                  <Choice value={form.role} onChange={(role) => setForm({ ...form, role })} options={[['student', 'студент'], ['teacher', 'викладач']]} />
+                  <span className="label">{t("Я")}</span>
+                  <Choice value={form.role} onChange={(role) => setForm({ ...form, role })} options={[['student', t("студент")], ['teacher', t("викладач")]]} />
                 </div>
                 {form.role === 'student' && (
                   <label className="field">
-                    <span className="label">Група</span>
-                    <input className="input" value={form.grp} onChange={set('grp')} placeholder="КН-21" required />
+                    <span className="label">{t("Група")}</span>
+                    <input className="input" value={form.grp} onChange={set('grp')} placeholder={t("КН-21")} required />
                   </label>
                 )}
               </>
             )}
             <label className="field">
-              <span className="label">Електронна пошта</span>
+              <span className="label">{t("Електронна пошта")}</span>
               <input className="input" value={form.email} onChange={set('email')} placeholder="name@university.edu" autoFocus />
             </label>
             <label className="field">
-              <span className="label">Пароль</span>
-              <input className="input" type="password" value={form.password} onChange={set('password')} placeholder={mode === 'login' ? 'Ваш пароль' : 'Щонайменше 4 символи'} />
+              <span className="label">{t("Пароль")}</span>
+              <input className="input" type="password" value={form.password} onChange={set('password')} placeholder={mode === 'login' ? t("Ваш пароль") : t("Щонайменше 4 символи")} />
             </label>
             {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
-            <button className="btn block" type="submit">{mode === 'login' ? 'Увійти' : 'Створити акаунт'}</button>
+            <button className="btn block" type="submit">{mode === 'login' ? t("Увійти") : t("Створити акаунт")}</button>
           </form>
 
           {mode === 'login' && (
             <>
-              <div className="divider">або спробуйте демо-акаунт</div>
+              <div className="divider">{t("або спробуйте демо-акаунт")}</div>
               <div className="profiles">
                 {DEMO.map(([name, role, email]) => (
                   <button key={email} className="profile" onClick={() => send('/login', { email, password: 'demo' })}>

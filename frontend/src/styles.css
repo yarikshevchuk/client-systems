@@ -764,3 +764,5 @@ input[type="file"]::file-selector-button {
 @media (max-width: 560px) {
   .panel { position: fixed; top: 64px; left: 12px; right: 12px; width: auto; }
 }
+
+.lang-btn { width: auto; padding: 0 10px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
