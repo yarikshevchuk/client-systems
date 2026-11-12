@@ -1,3 +1,8 @@
+import sys
+
+if sys.version_info < (3, 10):
+    sys.exit("Потрібен Python 3.10 або новіший, а запущено " + sys.version.split()[0] + ". Див. README, розділ «Запуск»")
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

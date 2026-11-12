@@ -16,7 +16,7 @@
 
 ## Запуск
 
-Потрібні Docker, Python 3.10+ і Node 20+.
+Потрібні Docker, Python 3.10+ і Node 20+. Перевірити: `python3 --version`. На macOS системний Python — 3.9, тому постав новіший (`brew install python@3.12` або інсталятор з python.org) і створюй середовище саме ним: `python3.12 -m venv .venv`.
 
 ```bash
 docker compose up -d db
@@ -24,10 +24,12 @@ docker compose up -d db
 
 ```bash
 cd backend
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 ```
+
+На Windows замість `.venv/bin/` пиши `.venv\Scripts\`, а замість `python3.12` — `py -3.12`.
 
 ```bash
 cd frontend
